@@ -902,6 +902,95 @@ class ClockTimeController extends Controller
     }
 
     /**
+     * Show the form for adding employee weekly hours.
+     */
+    public function addEmployeeHours(string $employeeid): View|\Illuminate\Http\RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+
+        $employeeid = base64_decode($employeeid);
+        $employee = StoreEmployee::find($employeeid);
+        if (! $employee) {
+            return redirect()->route('storeowner.clocktime.compare_weekly_hrs')
+                ->with('error', 'Employee not found.');
+        }
+
+        return view('storeowner.clocktime.add_employee_hours', compact('employee'));
+    }
+
+    /**
+     * Store employee weekly hours.
+     */
+    public function storeEmployeeHours(Request $request): RedirectResponse
+    {
+        $moduleCheck = $this->checkModuleAccess();
+        if ($moduleCheck) {
+            return $moduleCheck;
+        }
+
+        $storeid = $this->getStoreId();
+
+        $validated = $request->validate([
+            'employeeid' => ['required', 'integer', 'exists:stoma_employee,employeeid'],
+            'week_date' => ['required', 'date'],
+            'hours_worked' => ['required', 'numeric', 'min:0'],
+            'numberofdaysworked' => ['nullable', 'numeric', 'min:0'],
+            'sunday_hrs' => ['nullable', 'numeric', 'min:0'],
+            'owertime1_hrs' => ['nullable', 'numeric', 'min:0'],
+            'owertime2_hrs' => ['nullable', 'numeric', 'min:0'],
+            'holiday_hrs' => ['nullable', 'numeric', 'min:0'],
+            'holiday_days' => ['nullable', 'numeric', 'min:0'],
+            'sickpay_hrs' => ['nullable', 'numeric', 'min:0'],
+            'extras1_hrs' => ['nullable', 'numeric', 'min:0'],
+            'extras2_hrs' => ['nullable', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $weekDate = Carbon::parse($validated['week_date']);
+        $weekNumber = (int) $weekDate->format('W');
+        $year = $this->clockTimeService->getIsoYearFromDate($weekDate);
+        $weekDates = $this->clockTimeService->getStartAndEndDate($weekNumber, $year);
+
+        $payload = [
+            'employeeid' => $validated['employeeid'],
+            'storeid' => $storeid,
+            'week_start' => $weekDates['week_start'],
+            'week_end' => $weekDates['week_end'],
+            'weekno' => $weekNumber,
+            'year' => $year,
+            'hours_worked' => $validated['hours_worked'],
+            'numberofdaysworked' => $validated['numberofdaysworked'] ?? 0,
+            'break_deducted' => '00:00:00',
+            'total_hours' => number_format((float) $validated['hours_worked'], 2, '.', ''),
+            'sunday_hrs' => $validated['sunday_hrs'] ?? 0,
+            'owertime1_hrs' => $validated['owertime1_hrs'] ?? 0,
+            'owertime2_hrs' => $validated['owertime2_hrs'] ?? 0,
+            'holiday_hrs' => $validated['holiday_hrs'] ?? 0,
+            'holiday_days' => $validated['holiday_days'] ?? 0,
+            'sickpay_hrs' => $validated['sickpay_hrs'] ?? 0,
+            'extras1_hrs' => $validated['extras1_hrs'] ?? 0,
+            'extras2_hrs' => $validated['extras2_hrs'] ?? 0,
+            'notes' => $validated['notes'] ?? '',
+            'insertip' => $request->ip(),
+            'insertdate' => now(),
+        ];
+
+        DB::table('stoma_emp_payroll_hrs')->updateOrInsert([
+            'employeeid' => $validated['employeeid'],
+            'storeid' => $storeid,
+            'week_start' => $weekDates['week_start'],
+            'week_end' => $weekDates['week_end'],
+            'weekno' => $weekNumber,
+        ], $payload);
+
+        return redirect()->route('storeowner.clocktime.weekly-hrs-byemployee', ['employeeid' => base64_encode((string) $validated['employeeid'])])
+            ->with('success', 'Employee hours added successfully.');
+    }
+
+    /**
      * Display weekly hours for all employees in a specific week and year.
      */
     public function weeklyHrsByWeek($weekno, $year): View|\Illuminate\Http\RedirectResponse

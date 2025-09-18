@@ -72,6 +72,10 @@
                     <input type="text" id="searchbox" placeholder="Enter Keyword" 
                            class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500">
                 </div>
+                <a href="{{ route('storeowner.clocktime.add-employee-hours', ['employeeid' => base64_encode((string) ($employee->employeeid ?? 0))]) }}"
+                   class="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 text-sm">
+                    + Add week hours for {{ $employee->firstname ?? '' }} {{ $employee->lastname ?? '' }}
+                </a>
             </div>
         </div>
 

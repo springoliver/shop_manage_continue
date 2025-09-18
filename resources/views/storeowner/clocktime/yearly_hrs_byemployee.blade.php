@@ -66,9 +66,15 @@
     @if($empPayrollHrs->count() > 0 && $employee)
         <!-- Note -->
         <div class="bg-white rounded-lg shadow p-6 mb-6">
-            <p class="text-sm text-gray-700">
-                <strong>Note:</strong> {{ $employee->firstname }} {{ $employee->lastname }}'s Hours calculated based on {{ ucfirst($empPayrollHrs->first()->sallary_method ?? 'hourly') }} pay method.
-            </p>
+            <div class="flex items-center justify-between gap-4">
+                <p class="text-sm text-gray-700">
+                    <strong>Note:</strong> {{ $employee->firstname }} {{ $employee->lastname }}'s Hours calculated based on {{ ucfirst($empPayrollHrs->first()->sallary_method ?? 'hourly') }} pay method.
+                </p>
+                <a href="{{ route('storeowner.clocktime.add-employee-hours', ['employeeid' => base64_encode((string) ($employee->employeeid ?? 0))]) }}"
+                   class="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700 text-sm whitespace-nowrap">
+                    + Add week hours for {{ $employee->firstname ?? '' }} {{ $employee->lastname ?? '' }}
+                </a>
+            </div>
         </div>
 
         @if(($empPayrollHrs->first()->sallary_method ?? 'hourly') == 'yearly')

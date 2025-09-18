@@ -220,6 +220,8 @@ Route::name('storeowner.')->group(function () {
         Route::get('clocktime/group-yearly-hrs-allemployee/{year}', [StoreOwnerClockTimeController::class, 'groupYearlyHrsAllEmployee'])->name('clocktime.group-yearly-hrs-all-employee');
         Route::get('clocktime/weekly-hrs-byemployee/{employeeid}', [StoreOwnerClockTimeController::class, 'weeklyHrsByEmployee'])->name('clocktime.weekly-hrs-byemployee');
         Route::get('clocktime/weekly-hrs-byweek/{weekno}/{year}', [StoreOwnerClockTimeController::class, 'weeklyHrsByWeek'])->name('clocktime.weekly-hrs-byweek');
+        Route::get('clocktime/add-employee-hours/{employeeid}', [StoreOwnerClockTimeController::class, 'addEmployeeHours'])->name('clocktime.add-employee-hours');
+        Route::post('clocktime/store-employee-hours', [StoreOwnerClockTimeController::class, 'storeEmployeeHours'])->name('clocktime.store-employee-hours');
         Route::get('clocktime/export-all-employee-hols', [StoreOwnerClockTimeController::class, 'exportAllEmployeeHols'])->name('clocktime.export-all-employee-hols');
         Route::get('clocktime/export-group-all-employee-hols/{year}', [StoreOwnerClockTimeController::class, 'exportGroupAllEmployeeHols'])->name('clocktime.export-group-all-employee-hols');
         
