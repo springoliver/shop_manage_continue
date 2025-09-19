@@ -177,13 +177,27 @@
                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="employee" style="cursor: pointer;">
                                 Employee <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
                             </th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sun</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mon</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tue</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Wed</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Thu</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fri</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sat</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="sun" style="cursor: pointer;">
+                                Sun <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="mon" style="cursor: pointer;">
+                                Mon <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="tue" style="cursor: pointer;">
+                                Tue <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="wed" style="cursor: pointer;">
+                                Wed <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="thu" style="cursor: pointer;">
+                                Thu <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="fri" style="cursor: pointer;">
+                                Fri <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="sat" style="cursor: pointer;">
+                                Sat <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                            </th>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="total" style="cursor: pointer;">
                                 Total <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
                             </th>
@@ -206,11 +220,26 @@
                                         $totalHours += ceil($diff);
                                     }
                                 }
+                                $dayHours = array_fill_keys($days, 0);
+                                foreach ($days as $dayLabel) {
+                                    if (isset($rosterByDay[$dayLabel]) && $rosterByDay[$dayLabel]->start_time != '00:00:00') {
+                                        $r = $rosterByDay[$dayLabel];
+                                        $diff = (strtotime($r->end_time) - strtotime($r->start_time)) / 3600;
+                                        $dayHours[$dayLabel] = ceil($diff);
+                                    }
+                                }
                             @endphp
                             <tr class="roster-row hover:bg-gray-50" 
                                 data-row-index="{{ $loop->index }}"
                                 data-employee="{{ strtolower($employee->firstname . ' ' . $employee->lastname) }}"
-                                data-total="{{ $totalHours }}">
+                                data-total="{{ $totalHours }}"
+                                data-sun="{{ $dayHours['Sunday'] }}"
+                                data-mon="{{ $dayHours['Monday'] }}"
+                                data-tue="{{ $dayHours['Tuesday'] }}"
+                                data-wed="{{ $dayHours['Wednesday'] }}"
+                                data-thu="{{ $dayHours['Thursday'] }}"
+                                data-fri="{{ $dayHours['Friday'] }}"
+                                data-sat="{{ $dayHours['Saturday'] }}">
                                 <td class="px-4 py-3 text-sm font-medium text-gray-900">
                                     {{ $employee->firstname }} {{ $employee->lastname }}
                                 </td>
@@ -334,7 +363,8 @@
                     let aValue = a.getAttribute(`data-${sortColumn}`) || '';
                     let bValue = b.getAttribute(`data-${sortColumn}`) || '';
                     
-                    if (sortColumn === 'total') {
+                    const numericColumns = new Set(['total', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']);
+                    if (numericColumns.has(sortColumn)) {
                         aValue = parseFloat(aValue) || 0;
                         bValue = parseFloat(bValue) || 0;
                         return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
