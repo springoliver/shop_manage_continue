@@ -99,19 +99,37 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead>
                             <tr class="bg-gray-50">
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee Name</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sunday</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monday</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tuesday</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Wednesday</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Thursday</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Friday</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Saturday</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Hours</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="employee" style="cursor: pointer;">
+                                    Employee Name <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="sun" style="cursor: pointer;">
+                                    Sunday <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="mon" style="cursor: pointer;">
+                                    Monday <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="tue" style="cursor: pointer;">
+                                    Tuesday <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="wed" style="cursor: pointer;">
+                                    Wednesday <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="thu" style="cursor: pointer;">
+                                    Thursday <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="fri" style="cursor: pointer;">
+                                    Friday <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="sat" style="cursor: pointer;">
+                                    Saturday <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="total" style="cursor: pointer;">
+                                    Total Hours <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span>
+                                </th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
+                        <tbody class="bg-white divide-y divide-gray-200" id="rosterWeekBody">
                             @php
                                 $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                             @endphp
@@ -123,8 +141,28 @@
                                         foreach($employeeRosters as $roster) {
                                             $rosterByDay[$roster->day] = $roster;
                                         }
+                                        $dayHours = array_fill_keys($days, 0);
+                                        foreach ($days as $dayLabel) {
+                                            if (isset($rosterByDay[$dayLabel]) && $rosterByDay[$dayLabel]->start_time != '00:00:00') {
+                                                $r = $rosterByDay[$dayLabel];
+                                                $ts1 = strtotime($r->end_time);
+                                                $ts2 = strtotime($r->start_time);
+                                                $diff = ceil(abs($ts1 - $ts2) / 3600);
+                                                $dayHours[$dayLabel] = $diff;
+                                            }
+                                        }
+                                        $employeeName = strtolower($employee->firstname . ' ' . $employee->lastname);
                                     @endphp
-                                    <tr class="hover:bg-gray-50">
+                                    <tr class="roster-row hover:bg-gray-50"
+                                        data-employee="{{ $employeeName }}"
+                                        data-total="{{ $totalHours[$employee->employeeid] ?? 0 }}"
+                                        data-sun="{{ $dayHours['Sunday'] }}"
+                                        data-mon="{{ $dayHours['Monday'] }}"
+                                        data-tue="{{ $dayHours['Tuesday'] }}"
+                                        data-wed="{{ $dayHours['Wednesday'] }}"
+                                        data-thu="{{ $dayHours['Thursday'] }}"
+                                        data-fri="{{ $dayHours['Friday'] }}"
+                                        data-sat="{{ $dayHours['Saturday'] }}">
                                         <td class="px-4 py-3 text-sm font-medium text-gray-900">
                                             {{ $employee->firstname }} {{ $employee->lastname }}
                                         </td>
@@ -402,6 +440,70 @@
                 alert('Error loading roster edit form. Please try again.');
             });
         }
+
+        let sortColumn = null;
+        let sortDirection = 'asc';
+
+        function sortRosterWeek(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+
+            document.querySelectorAll('.sortable .sort-indicator').forEach(indicator => {
+                indicator.innerHTML = '<i class="fas fa-sort text-gray-400"></i>';
+            });
+
+            const clickedHeader = document.querySelector(`th[data-sort="${column}"]`);
+            if (clickedHeader) {
+                const indicator = clickedHeader.querySelector('.sort-indicator');
+                if (indicator) {
+                    indicator.innerHTML = sortDirection === 'asc'
+                        ? '<i class="fas fa-sort-up text-gray-800"></i>'
+                        : '<i class="fas fa-sort-down text-gray-800"></i>';
+                }
+            }
+
+            const tbody = document.getElementById('rosterWeekBody');
+            if (!tbody) {
+                return;
+            }
+
+            const rows = Array.from(tbody.querySelectorAll('tr.roster-row'));
+            const numericColumns = new Set(['total', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']);
+
+            rows.sort((a, b) => {
+                const aValue = a.getAttribute(`data-${column}`) || '';
+                const bValue = b.getAttribute(`data-${column}`) || '';
+
+                if (numericColumns.has(column)) {
+                    const aNum = parseFloat(aValue) || 0;
+                    const bNum = parseFloat(bValue) || 0;
+                    return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+                }
+
+                if (aValue < bValue) {
+                    return sortDirection === 'asc' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortDirection === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        document.querySelectorAll('.sortable').forEach(header => {
+            header.addEventListener('click', function () {
+                const column = this.getAttribute('data-sort');
+                if (column) {
+                    sortRosterWeek(column);
+                }
+            });
+        });
     </script>
     @endpush
 </x-storeowner-app-layout>
