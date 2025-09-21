@@ -211,6 +211,7 @@ class ModuleSettingController extends Controller
     {
         $user = auth('storeowner')->user();
         $storeid = session('storeid', 0);
+        $isRenewal = request()->boolean('renewal');
 
         $curDate = Carbon::now();
         $latestPaidModules = PaidModule::with('module')
@@ -232,10 +233,25 @@ class ModuleSettingController extends Controller
 
         $installedModuleIds = $installedModules->pluck('moduleid')->all();
 
-        $availableModules = Module::where('status', 'Enable')
-            ->whereNotIn('moduleid', $installedModuleIds)
-            ->get()
-            ->keyBy('moduleid');
+        if ($isRenewal) {
+            $renewalsDue = $latestPaidModules->filter(function (PaidModule $pm) use ($curDate) {
+                if (! $pm->expire_date) {
+                    return false;
+                }
+                $daysRemaining = $curDate->diffInDays($pm->expire_date, false);
+                return $daysRemaining <= 60;
+            })->values();
+
+            $availableModules = $renewalsDue
+                ->pluck('module')
+                ->filter()
+                ->keyBy('moduleid');
+        } else {
+            $availableModules = Module::where('status', 'Enable')
+                ->whereNotIn('moduleid', $installedModuleIds)
+                ->get()
+                ->keyBy('moduleid');
+        }
 
         $modulesParam = request()->query('modules', '');
         $plansParam = request()->query('plans', '');
@@ -243,6 +259,10 @@ class ModuleSettingController extends Controller
         $selectedModuleIds = $modulesParam
             ? collect(explode(',', $modulesParam))->filter()->map(fn ($id) => (int) $id)->values()
             : $availableModules->keys()->values();
+
+        if ($isRenewal && $modulesParam) {
+            $availableModules = $availableModules->only($selectedModuleIds->all());
+        }
 
         $planMap = collect(explode(',', $plansParam))
             ->filter()

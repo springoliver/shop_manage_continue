@@ -176,7 +176,7 @@
                                 @endphp
                                 <tr>
                                     <td class="px-4 py-3">
-                                        <input type="checkbox" class="installed-select rounded border-gray-300">
+                                        <input type="checkbox" class="installed-select rounded border-gray-300" data-module-id="{{ $pm->moduleid }}">
                                     </td>
                                     <td class="px-4 py-3 font-medium text-gray-900">
                                         {{ $pm->module->module ?? 'Unknown' }}
@@ -281,7 +281,7 @@
 
                 @if ($installedModules->isNotEmpty())
                     <div class="mt-4">
-                        <button type="button" class="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800">
+                        <button type="button" id="renew-selected-installed" class="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800">
                             Renew all selected Modules
                         </button>
                     </div>
@@ -318,7 +318,7 @@
                                 @endphp
                                 <tr>
                                     <td class="px-4 py-3">
-                                        <input type="checkbox" class="renewal-select rounded border-gray-300">
+                                        <input type="checkbox" class="renewal-select rounded border-gray-300" data-module-id="{{ $pm->moduleid }}">
                                     </td>
                                     <td class="px-4 py-3 font-medium text-gray-900">
                                         {{ $pm->module->module ?? 'Unknown' }}
@@ -416,7 +416,7 @@
 
                 @if ($renewalsDue->isNotEmpty())
                     <div class="mt-4">
-                        <button type="button" class="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800">
+                        <button type="button" id="renew-selected-renewals" class="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800">
                             Renew all selected Modules
                         </button>
                     </div>
@@ -613,11 +613,14 @@
             return selected?.value || 'monthly';
         }
 
-        function buildCheckoutUrl(items) {
+        function buildCheckoutUrl(items, isRenewal = false) {
             const params = new URLSearchParams();
             if (items.length) {
                 params.set('modules', items.map(item => item.id).join(','));
                 params.set('plans', items.map(item => `${item.id}:${item.plan}`).join(','));
+            }
+            if (isRenewal) {
+                params.set('renewal', 'true');
             }
             return "{{ route('storeowner.modulesetting.checkout') }}" + (params.toString() ? `?${params.toString()}` : '');
         }
@@ -642,6 +645,39 @@
                 return;
             }
             window.location.href = buildCheckoutUrl(selected);
+        });
+
+        function collectRenewalSelections(selector) {
+            const selected = [];
+            document.querySelectorAll(selector + ':checked').forEach(cb => {
+                const moduleId = cb.dataset.moduleId;
+                if (!moduleId) {
+                    return;
+                }
+                const row = cb.closest('tr');
+                const termSelect = row?.querySelector('.renewal-term-select');
+                const cycle = termSelect?.value || 'monthly';
+                selected.push({ id: moduleId, plan: cycle });
+            });
+            return selected;
+        }
+
+        document.getElementById('renew-selected-installed')?.addEventListener('click', () => {
+            const selected = collectRenewalSelections('.installed-select');
+            if (!selected.length) {
+                alert('Please select at least one module.');
+                return;
+            }
+            window.location.href = buildCheckoutUrl(selected, true);
+        });
+
+        document.getElementById('renew-selected-renewals')?.addEventListener('click', () => {
+            const selected = collectRenewalSelections('.renewal-select');
+            if (!selected.length) {
+                alert('Please select at least one module.');
+                return;
+            }
+            window.location.href = buildCheckoutUrl(selected, true);
         });
 
         function openModuleInfoModal(id) {
