@@ -207,6 +207,7 @@
                                             <form method="POST" action="{{ route('storeowner.modulesetting.payment-cards.select') }}" class="inline">
                                                 @csrf
                                                 <input type="hidden" name="pmid" value="{{ $pm->pmid }}">
+                                                <input type="hidden" name="tab" value="installed">
                                                 <select name="payment_card_id" class="border border-gray-300 rounded-md pl-2 pr-8 py-1 text-sm payment-card-select" data-pmid="{{ $pm->pmid }}">
                                                     <option value="">Select card</option>
                                                     @foreach ($stripeCards as $card)
@@ -343,6 +344,7 @@
                                             <form method="POST" action="{{ route('storeowner.modulesetting.payment-cards.select') }}" class="inline">
                                                 @csrf
                                                 <input type="hidden" name="pmid" value="{{ $pm->pmid }}">
+                                                <input type="hidden" name="tab" value="renewals">
                                                 <select name="payment_card_id" class="border border-gray-300 rounded-md pl-2 pr-8 py-1 text-sm payment-card-select" data-pmid="{{ $pm->pmid }}">
                                                     <option value="">Select card</option>
                                                     @foreach ($paymentCards as $card)

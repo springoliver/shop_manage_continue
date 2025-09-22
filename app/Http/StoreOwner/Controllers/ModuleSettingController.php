@@ -1225,13 +1225,16 @@ class ModuleSettingController extends Controller
         $validated = $request->validate([
             'pmid' => ['required', 'integer', 'exists:stoma_paid_module,pmid'],
             'payment_card_id' => ['required', 'integer', 'exists:stoma_payment_card,cardid'],
+            'tab' => ['nullable', 'string'],
         ]);
 
         PaidModule::where('pmid', $validated['pmid'])->update([
             'payment_card_id' => $validated['payment_card_id'],
         ]);
 
-        return redirect()->route('storeowner.modulesetting.index', ['tab' => 'installed'])
+        $tab = $validated['tab'] === 'renewals' ? 'renewals' : 'installed';
+
+        return redirect()->route('storeowner.modulesetting.index', ['tab' => $tab])
             ->with('success', 'Payment method updated.');
     }
 
