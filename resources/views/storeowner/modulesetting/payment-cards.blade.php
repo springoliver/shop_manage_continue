@@ -328,8 +328,10 @@
             stripeElementsMounted = true;
         }
 
-        if (modalParam === 'details') {
-            // keep placeholder to avoid unused var warnings if needed
+        if (modalParam === 'address') {
+            openBillingAddressModal();
+        } else if (modalParam === 'details') {
+            openCardDetailsModal();
         }
 
         if (cardForm) {
