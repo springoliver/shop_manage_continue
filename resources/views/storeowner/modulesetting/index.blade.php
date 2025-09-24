@@ -220,7 +220,24 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-gray-700">
-                                        {{ $renewalTerm }}
+                                        @if ($isEmployeesModule)
+                                            {{ $renewalTerm }}
+                                        @else
+                                            @php
+                                                $monthlyPrice = (float) ($pm->module->price_1months ?? $pm->paid_amount ?? 0);
+                                                $yearlyPrice = (float) ($pm->module->price_12months ?? 0);
+                                                $selectedCycle = $pm->billing_cycle === 'yearly' ? 'yearly' : 'monthly';
+                                            @endphp
+                                            <select class="border border-gray-300 rounded-md pl-2 pr-8 py-1 text-sm renewal-term-select"
+                                                    data-target="renewal-term-{{ $pm->pmid }}">
+                                                <option value="monthly" {{ $selectedCycle === 'monthly' ? 'selected' : '' }}>
+                                                    1 mth for € {{ number_format($monthlyPrice, 2) }}
+                                                </option>
+                                                <option value="yearly" {{ $selectedCycle === 'yearly' ? 'selected' : '' }}>
+                                                    1 yr for € {{ number_format($yearlyPrice, 2) }}
+                                                </option>
+                                            </select>
+                                        @endif
                                     </td>
                                     <td class="px-4 py-3 text-gray-700">
                                         {{ $isEmployeesModule ? '-' : ($pm->expire_date?->format('m/d/Y') ?? '-') }}
@@ -246,6 +263,7 @@
                                                 @csrf
                                                 <input type="hidden" name="pmid" value="{{ $pm->pmid }}">
                                                 <input type="hidden" name="tab" value="installed">
+                                                <input type="hidden" name="billing_cycle" id="renewal-term-{{ $pm->pmid }}" value="{{ $pm->billing_cycle === 'yearly' ? 'yearly' : 'monthly' }}">
                                                 <button type="submit" class="px-3 py-1 bg-gray-200 text-gray-700 rounded">Renew</button>
                                             </form>
                                         @endif
@@ -338,7 +356,24 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-gray-700">
-                                        {{ $renewalTerm }}
+                                        @if ($isEmployeesModule)
+                                            {{ $renewalTerm }}
+                                        @else
+                                            @php
+                                                $monthlyPrice = (float) ($pm->module->price_1months ?? $pm->paid_amount ?? 0);
+                                                $yearlyPrice = (float) ($pm->module->price_12months ?? 0);
+                                                $selectedCycle = $pm->billing_cycle === 'yearly' ? 'yearly' : 'monthly';
+                                            @endphp
+                                            <select class="border border-gray-300 rounded-md pl-2 pr-8 py-1 text-sm renewal-term-select"
+                                                    data-target="renewal-term-{{ $pm->pmid }}">
+                                                <option value="monthly" {{ $selectedCycle === 'monthly' ? 'selected' : '' }}>
+                                                    1 mth for € {{ number_format($monthlyPrice, 2) }}
+                                                </option>
+                                                <option value="yearly" {{ $selectedCycle === 'yearly' ? 'selected' : '' }}>
+                                                    1 yr for € {{ number_format($yearlyPrice, 2) }}
+                                                </option>
+                                            </select>
+                                        @endif
                                     </td>
                                     <td class="px-4 py-3 text-gray-700">
                                         {{ $isEmployeesModule ? '-' : ($pm->expire_date?->format('m/d/Y') ?? '-') }}
@@ -362,6 +397,7 @@
                                                 @csrf
                                                 <input type="hidden" name="pmid" value="{{ $pm->pmid }}">
                                                 <input type="hidden" name="tab" value="renewals">
+                                                <input type="hidden" name="billing_cycle" id="renewal-term-{{ $pm->pmid }}" value="{{ $pm->billing_cycle === 'yearly' ? 'yearly' : 'monthly' }}">
                                                 <button type="submit" class="px-3 py-1 bg-gray-200 text-gray-700 rounded">Renew</button>
                                             </form>
                                         @endif
@@ -631,6 +667,16 @@
                     return;
                 }
                 this.closest('form')?.submit();
+            });
+        });
+
+        document.querySelectorAll('.renewal-term-select').forEach(select => {
+            select.addEventListener('change', function () {
+                const targetId = this.dataset.target;
+                const target = document.getElementById(targetId);
+                if (target) {
+                    target.value = this.value;
+                }
             });
         });
 

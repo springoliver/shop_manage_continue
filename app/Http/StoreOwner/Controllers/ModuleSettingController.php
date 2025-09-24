@@ -899,6 +899,7 @@ class ModuleSettingController extends Controller
         $validated = $request->validate([
             'pmid' => ['required', 'integer', 'exists:stoma_paid_module,pmid'],
             'tab' => ['nullable', 'string'],
+            'billing_cycle' => ['nullable', 'in:monthly,yearly'],
         ]);
 
         $storeid = session('storeid', 0);
@@ -941,7 +942,8 @@ class ModuleSettingController extends Controller
                 ->with('error', 'Stripe is not configured.');
         }
 
-        $billingCycle = $pm->billing_cycle === 'yearly' ? 'yearly' : 'monthly';
+        $requestedCycle = $validated['billing_cycle'] ?? null;
+        $billingCycle = $requestedCycle === 'yearly' ? 'yearly' : ($requestedCycle === 'monthly' ? 'monthly' : ($pm->billing_cycle === 'yearly' ? 'yearly' : 'monthly'));
         $months = $billingCycle === 'yearly' ? 12 : 1;
         $amount = $billingCycle === 'yearly'
             ? ($pm->module->price_12months ?? $pm->paid_amount)
