@@ -25,11 +25,16 @@ class LoginRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
-            'g-recaptcha-response' => ['required'],
         ];
+
+        if (config('services.recaptcha.enabled') && ! app()->environment('local')) {
+            $rules['g-recaptcha-response'] = ['required'];
+        }
+
+        return $rules;
     }
 
     /**
@@ -41,11 +46,13 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        // CAPTCHA check
-        if (! $this->verifyRecaptcha()) {
-            throw ValidationException::withMessages([
-                'g-recaptcha-response' => 'Captcha verification failed.',
-            ]);
+        // CAPTCHA check (skip in local)
+        if (config('services.recaptcha.enabled') && ! app()->environment('local')) {
+            if (! $this->verifyRecaptcha()) {
+                throw ValidationException::withMessages([
+                    'g-recaptcha-response' => 'Captcha verification failed.',
+                ]);
+            }
         }
 
         // Attempt admin login

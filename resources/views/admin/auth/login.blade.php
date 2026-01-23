@@ -53,13 +53,15 @@
                 </label>
             </div>-->
 
-            <!-- Google reCAPTCHA -->
-            <div class="mt-4">
-                <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
-                @error('g-recaptcha-response')
-                    <div class="text-red-600 text-sm mt-1">{{ $message }}</div>
-                @enderror
-            </div>
+            @unless (! config('services.recaptcha.enabled') || app()->environment('local'))
+                <!-- Google reCAPTCHA -->
+                <div class="mt-4">
+                    <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
+                    @error('g-recaptcha-response')
+                        <div class="text-red-600 text-sm mt-1">{{ $message }}</div>
+                    @enderror
+                </div>
+            @endunless
 
             <!-- Submit Button -->
             <div class="flex items-center justify-end mt-4">
