@@ -31,7 +31,7 @@ class LoginRequest extends FormRequest
         return [
             'emailid' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
-            'g-recaptcha-response' => ['required'], // captcha required
+            // 'g-recaptcha-response' => ['required'], // captcha required
         ];
     }
 
@@ -45,11 +45,11 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
 
         // CAPTCHA check
-        if (! $this->verifyRecaptcha()) {
-            throw ValidationException::withMessages([
-                'g-recaptcha-response' => 'Captcha verification failed.',
-            ]);
-        }
+        // if (! $this->verifyRecaptcha()) {
+        //     throw ValidationException::withMessages([
+        //         'g-recaptcha-response' => 'Captcha verification failed.',
+        //     ]);
+        // }
 
         $credentials = $this->only('emailid', 'password');
 

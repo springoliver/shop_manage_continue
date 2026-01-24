@@ -1,7 +1,7 @@
 <!-- resources/views/storeowner/auth/login.blade.php -->
 
 <!-- REQUIRED: Google reCAPTCHA script -->
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<!-- <script src="https://www.google.com/recaptcha/api.js" async defer></script> -->
 
 <x-guest-layout>
     <div class="w-full max-w-md bg-white/95 rounded-lg shadow-lg p-8">
@@ -60,12 +60,12 @@
             </div>
 
             <!-- Google reCAPTCHA -->
-            <div class="mt-4">
+            <!-- <div class="mt-4">
                 <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
                 @error('g-recaptcha-response')
                     <div class="text-red-600 text-sm mt-1">{{ $message }}</div>
                 @enderror
-            </div>
+            </div> -->
 
             <!-- Links + Submit Button -->
             <div class="flex items-center justify-between mt-4">
