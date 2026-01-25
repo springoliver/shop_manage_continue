@@ -9363,6 +9363,7 @@ CREATE TABLE `stoma_module` (
   `module` varchar(255) NOT NULL,
   `module_description` text NOT NULL,
   `module_detailed_info` text,
+  `module_category` enum('Advanced (paid)','Standard / Core','Beta Module') NOT NULL DEFAULT 'Standard / Core',
   `price_1months` decimal(10,2) NOT NULL,
   `price_3months` decimal(10,2) NOT NULL DEFAULT '0.00',
   `price_6months` decimal(10,2) NOT NULL DEFAULT '0.00',

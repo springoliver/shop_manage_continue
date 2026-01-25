@@ -91,6 +91,24 @@
                     @enderror
                 </div>
 
+                <!-- Module Category -->
+                <div class="mb-6">
+                    <label for="module_category" class="block text-sm font-medium text-gray-700 mb-2">
+                        Module Category <span class="text-red-500">*</span>
+                    </label>
+                    <select name="module_category" id="module_category"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-gray-500 focus:border-gray-500 @error('module_category') border-red-500 @enderror"
+                        required>
+                        <option value="">Select Category</option>
+                        <option value="Advanced (paid)" {{ old('module_category', $module->module_category) === 'Advanced (paid)' ? 'selected' : '' }}>Advanced (paid)</option>
+                        <option value="Standard / Core" {{ old('module_category', $module->module_category) === 'Standard / Core' ? 'selected' : '' }}>Standard / Core</option>
+                        <option value="Beta Module" {{ old('module_category', $module->module_category) === 'Beta Module' ? 'selected' : '' }}>Beta Module</option>
+                    </select>
+                    @error('module_category')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
                 <!-- Free Days -->
                 <div class="mb-6">
                     <label for="free_days" class="block text-sm font-medium text-gray-700 mb-2">

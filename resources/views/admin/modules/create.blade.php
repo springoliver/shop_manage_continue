@@ -32,12 +32,7 @@
         <h1 class="text-2xl font-semibold text-gray-800">Add Module</h1>
     </div>
 
-    <!-- Note about mandatory fields -->
-    <div class="mb-6 text-right">
-        <p class="text-sm text-gray-600">All fields marked with (<span class="text-red-500">*</span>) are mandatory.</p>
-    </div>
-
-    <!-- Form Card -->
+     <!-- Form Card -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <!-- Card Header -->
         <div class="bg-white border-b border-gray-200 px-6 py-4">
@@ -86,6 +81,24 @@
                     <textarea name="module_detailed_info" id="module_detailed_info" rows="5"
                         class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-gray-500 focus:border-gray-500 @error('module_detailed_info') border-red-500 @enderror">{{ old('module_detailed_info') }}</textarea>
                     @error('module_detailed_info')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Module Category -->
+                <div class="mb-6">
+                    <label for="module_category" class="block text-sm font-medium text-gray-700 mb-2">
+                        Module Category <span class="text-red-500">*</span>
+                    </label>
+                    <select name="module_category" id="module_category"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-gray-500 focus:border-gray-500 @error('module_category') border-red-500 @enderror"
+                        required>
+                        <option value="">Select Category</option>
+                        <option value="Advanced (paid)" {{ old('module_category') === 'Advanced (paid)' ? 'selected' : '' }}>Advanced (paid)</option>
+                        <option value="Standard / Core" {{ old('module_category') === 'Standard / Core' ? 'selected' : '' }}>Standard / Core</option>
+                        <option value="Beta Module" {{ old('module_category') === 'Beta Module' ? 'selected' : '' }}>Beta Module</option>
+                    </select>
+                    @error('module_category')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>

@@ -34,6 +34,10 @@ class ModuleRequest extends FormRequest
                     'max:255',
                     Rule::unique('stoma_module', 'module')->ignore($moduleid, 'moduleid'),
                 ],
+                'module_category' => [
+                    'required',
+                    Rule::in(['Advanced (paid)', 'Standard / Core', 'Beta Module']),
+                ],
                 'module_description' => ['required', 'string'],
                 'module_detailed_info' => ['nullable', 'string'],
                 'price_1months' => ['required', 'numeric', 'min:0'],
@@ -47,6 +51,10 @@ class ModuleRequest extends FormRequest
         // Store rules
         return [
             'module' => ['required', 'string', 'max:255', 'unique:stoma_module,module'],
+            'module_category' => [
+                'required',
+                Rule::in(['Advanced (paid)', 'Standard / Core', 'Beta Module']),
+            ],
             'module_description' => ['required', 'string'],
             'module_detailed_info' => ['nullable', 'string'],
             'price_1months' => ['required', 'numeric', 'min:0'],
@@ -67,6 +75,7 @@ class ModuleRequest extends FormRequest
     {
         return [
             'module' => 'module name',
+            'module_category' => 'module category',
             'module_description' => 'module description',
             'module_detailed_info' => 'module detailed information',
             'price_1months' => '1 month price',
@@ -87,6 +96,7 @@ class ModuleRequest extends FormRequest
         return [
             'module.unique' => 'This module name already exists.',
             'module.required' => 'The module name is required.',
+            'module_category.required' => 'The module category is required.',
             'module_description.required' => 'The module description is required.',
             'price_1months.required' => 'The 1 month price is required.',
             'price_3months.required' => 'The 3 months price is required.',

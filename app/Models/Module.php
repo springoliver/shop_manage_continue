@@ -51,6 +51,7 @@ class Module extends Model
      */
     protected $fillable = [
         'module',
+        'module_category',
         'module_description',
         'module_detailed_info',
         'price_1months',
