@@ -32,11 +32,6 @@
         <h1 class="text-2xl font-semibold text-gray-800">Edit Module</h1>
     </div>
 
-    <!-- Note about mandatory fields -->
-    <div class="mb-6 text-right">
-        <p class="text-sm text-gray-600">All fields marked with (<span class="text-red-500">*</span>) are mandatory.</p>
-    </div>
-
     <!-- Form Card -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <!-- Card Header -->

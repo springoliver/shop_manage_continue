@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::table('stoma_module', function (Blueprint $table) {
             $table->enum('module_category', ['Advanced (paid)', 'Standard / Core', 'Beta Module'])
-                ->default('Standard / Core')
                 ->after('module_detailed_info');
         });
     }
