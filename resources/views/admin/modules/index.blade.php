@@ -128,7 +128,7 @@
                                     <div class="text-sm text-gray-900">{{ $module->module_category ?? '-' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
-                                    <button type="button" onclick="openStatusModal({{ $module->moduleid }}, '{{ $module->status }}')" 
+                                    <button type="button" onclick="openStatusModal('{{ $module->moduleid }}', '{{ $module->status }}')" 
                                         class="px-2 py-1 text-xs font-semibold rounded-full {{ $module->status === 'Enable' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
                                         {{ $module->status }}
                                     </button>
@@ -137,7 +137,7 @@
                                     <a href="{{ route('admin.modules.edit', $module) }}" class="text-blue-600 hover:text-blue-900 mr-3" title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <button type="button" onclick="deleteModule({{ $module->moduleid }})" class="text-red-600 hover:text-red-900" title="Delete">
+                                    <button type="button" onclick="deleteModule('{{ $module->moduleid }}')" class="text-red-600 hover:text-red-900" title="Delete">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                     <form id="delete-form-{{ $module->moduleid }}" action="{{ route('admin.modules.destroy', $module) }}" method="POST" class="hidden">
