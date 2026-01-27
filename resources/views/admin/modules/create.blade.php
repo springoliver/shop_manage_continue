@@ -103,6 +103,29 @@
                     @enderror
                 </div>
 
+                <!-- Dependent Modules -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Dependent Modules
+                    </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        @foreach ($modules as $availableModule)
+                            <label class="inline-flex items-center space-x-2 text-sm text-gray-700">
+                                <input type="checkbox" name="dependent_modules[]" value="{{ $availableModule->moduleid }}"
+                                    class="rounded border-gray-300 text-gray-700 focus:ring-gray-500"
+                                    {{ in_array($availableModule->moduleid, old('dependent_modules', []), true) ? 'checked' : '' }}>
+                                <span>{{ $availableModule->module }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    @error('dependent_modules')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                    @error('dependent_modules.*')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
                 <!-- Free Days -->
                 <div class="mb-6">
                     <label for="free_days" class="block text-sm font-medium text-gray-700 mb-2">

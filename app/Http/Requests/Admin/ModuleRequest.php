@@ -24,6 +24,12 @@ class ModuleRequest extends FormRequest
     {
         $moduleid = $this->route('module') ? $this->route('module')->moduleid : null;
         $isUpdate = $this->isMethod('PUT') || $this->isMethod('PATCH');
+        $dependencyRules = ['nullable', 'array'];
+        $dependencyItemRules = ['integer', 'exists:stoma_module,moduleid'];
+
+        if ($moduleid) {
+            $dependencyItemRules[] = Rule::notIn([$moduleid]);
+        }
 
         if ($isUpdate) {
             // Update rules
@@ -40,6 +46,8 @@ class ModuleRequest extends FormRequest
                 ],
                 'module_description' => ['required', 'string'],
                 'module_detailed_info' => ['nullable', 'string'],
+                'dependent_modules' => $dependencyRules,
+                'dependent_modules.*' => $dependencyItemRules,
                 'price_1months' => ['required', 'numeric', 'min:0'],
                 'price_3months' => ['required', 'numeric', 'min:0'],
                 'price_6months' => ['required', 'numeric', 'min:0'],
@@ -57,6 +65,8 @@ class ModuleRequest extends FormRequest
             ],
             'module_description' => ['required', 'string'],
             'module_detailed_info' => ['nullable', 'string'],
+            'dependent_modules' => $dependencyRules,
+            'dependent_modules.*' => $dependencyItemRules,
             'price_1months' => ['required', 'numeric', 'min:0'],
             'price_3months' => ['required', 'numeric', 'min:0'],
             'price_6months' => ['required', 'numeric', 'min:0'],
@@ -78,6 +88,7 @@ class ModuleRequest extends FormRequest
             'module_category' => 'module category',
             'module_description' => 'module description',
             'module_detailed_info' => 'module detailed information',
+            'dependent_modules' => 'dependent modules',
             'price_1months' => '1 month price',
             'price_3months' => '3 months price',
             'price_6months' => '6 months price',

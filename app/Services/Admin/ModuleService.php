@@ -44,13 +44,19 @@ class ModuleService
      */
     public function saveModule(array $data): Module
     {
+        $dependentModules = $data['dependent_modules'] ?? [];
+        unset($data['dependent_modules']);
+
         // Populate insert metadata
         $data['insertip'] = request()->ip();
         $data['insertby'] = auth('admin')->id() ?? 0;
         $data['editip'] = request()->ip();
         $data['editby'] = auth('admin')->id() ?? 0;
 
-        return $this->repository->createModule($data);
+        $module = $this->repository->createModule($data);
+        $module->dependencies()->sync($dependentModules);
+
+        return $module;
     }
 
     /**
@@ -62,11 +68,20 @@ class ModuleService
      */
     public function updateModule(Module $module, array $data): bool
     {
+        $dependentModules = $data['dependent_modules'] ?? [];
+        unset($data['dependent_modules']);
+
         // Populate edit metadata
         $data['editip'] = request()->ip();
         $data['editby'] = auth('admin')->id() ?? 0;
 
-        return $this->repository->updateModule($module, $data);
+        $updated = $this->repository->updateModule($module, $data);
+
+        if ($updated) {
+            $module->dependencies()->sync($dependentModules);
+        }
+
+        return $updated;
     }
 
     /**

@@ -48,7 +48,9 @@ class ModuleController extends Controller
      */
     public function create(): View
     {
-        return view('admin.modules.create');
+        $modules = Module::orderBy('module')->get(['moduleid', 'module']);
+
+        return view('admin.modules.create', compact('modules'));
     }
 
     /**
@@ -75,7 +77,14 @@ class ModuleController extends Controller
      */
     public function edit(Module $module): View
     {
-        return view('admin.modules.edit', compact('module'));
+        $modules = Module::where('moduleid', '!=', $module->moduleid)
+            ->orderBy('module')
+            ->get(['moduleid', 'module']);
+
+        $module->load('dependencies');
+        $selectedDependencies = $module->dependencies->pluck('moduleid')->all();
+
+        return view('admin.modules.edit', compact('module', 'modules', 'selectedDependencies'));
     }
 
     /**

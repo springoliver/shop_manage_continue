@@ -9379,6 +9379,19 @@ CREATE TABLE `stoma_module` (
   PRIMARY KEY (`moduleid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
+DROP TABLE IF EXISTS `stoma_module_dependency`;
+CREATE TABLE `stoma_module_dependency` (
+  `dependencyid` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `moduleid` bigint unsigned NOT NULL,
+  `dependent_moduleid` bigint unsigned NOT NULL,
+  PRIMARY KEY (`dependencyid`),
+  UNIQUE KEY `stoma_module_dependency_unique` (`moduleid`,`dependent_moduleid`),
+  KEY `stoma_module_dependency_moduleid_foreign` (`moduleid`),
+  KEY `stoma_module_dependency_dependent_moduleid_foreign` (`dependent_moduleid`),
+  CONSTRAINT `stoma_module_dependency_moduleid_foreign` FOREIGN KEY (`moduleid`) REFERENCES `stoma_module` (`moduleid`) ON DELETE CASCADE,
+  CONSTRAINT `stoma_module_dependency_dependent_moduleid_foreign` FOREIGN KEY (`dependent_moduleid`) REFERENCES `stoma_module` (`moduleid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
 INSERT INTO `stoma_module` (`moduleid`, `module`, `module_description`, `module_detailed_info`, `price_1months`, `price_3months`, `price_6months`, `price_12months`, `free_days`, `status`, `insertdate`, `insertip`, `insertby`, `editdate`, `editip`, `editby`) VALUES
 (1,	'Roster',	'<p>\r\n Roster Module</p>',	'<p>The Employee Roster module provides a centralized view of all employees within the organization. </p><p>It allows administrators and managers to easily manage employee roster, availability, and assignments. </p>With intuitive search and filtering, teams can quickly access employee details, track workforce distribution, and ensure accurate staffing across departments.',	0.00,	0.00,	0.00,	0.00,	90,	'Enable',	'0000-00-00 00:00:00',	'',	0,	'2026-01-29 12:13:37',	'83.71.20.123',	1),
 (2,	'Time Off Request',	'<p>\n Time Off Request Module</p>\n',	'<p>\nSimplified tracking for employee vacation and sick days.</p>\n <p>\nEmployees enter their requests (paid time off, sick leave, etc).</p>\n <p>\nManagers decide to either approve or refuse time off requests.</p>\n<p>\nNotification is sent to the employee and their calendar is updated automatically.</p>',	0.00,	0.00,	0.00,	0.00,	90,	'Enable',	'0000-00-00 00:00:00',	'',	0,	'2025-10-13 14:57:26',	'83.71.20.123',	0),

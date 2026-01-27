@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Module extends Model
 {
@@ -82,6 +83,19 @@ class Module extends Model
             'insertdate' => 'datetime',
             'editdate' => 'datetime',
         ];
+    }
+
+    /**
+     * Modules this module depends on.
+     */
+    public function dependencies(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Module::class,
+            'stoma_module_dependency',
+            'moduleid',
+            'dependent_moduleid'
+        );
     }
 
     /**
