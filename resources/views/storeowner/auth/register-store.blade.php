@@ -33,24 +33,6 @@
                 </div>
             </div>
 
-            <!-- Store Type -->
-            <div class="flex items-start gap-4">
-                <label for="typeid" class="w-1/4 pt-2 text-sm font-medium text-gray-700 text-end pr-5">
-                    Store Type<span class="text-red-500"> *</span>
-                </label>
-                <div class="w-3/4">
-                    <select id="typeid" name="typeid" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                        <option value="">Select Store Type</option>
-                        @foreach($storeTypes as $storeType)
-                            <option value="{{ $storeType->typeid }}" {{ old('typeid') == $storeType->typeid ? 'selected' : '' }}>
-                                {{ $storeType->store_type }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <x-input-error :messages="$errors->get('typeid')" class="mt-2" />
-                </div>
-            </div>
-
             <!-- Website URL -->
             <div class="flex items-start gap-4">
                 <label for="weburl" class="w-1/4 pt-2 text-sm font-medium text-gray-700 text-end pr-5">
@@ -81,17 +63,6 @@
                 <div class="w-3/4">
                     <x-text-input id="address1" class="block w-full" type="text" name="address1" placeholder="Location" :value="old('address1')" required />
                     <x-input-error :messages="$errors->get('address1')" class="mt-2" />
-                </div>
-            </div>
-
-            <!-- Store Logo -->
-            <div class="flex items-start gap-4">
-                <label for="logo_img" class="w-1/4 pt-2 text-sm font-medium text-gray-700 text-end pr-5">
-                    Store Logo
-                </label>
-                <div class="w-3/4">
-                    <input id="logo_img" class="block w-full border border-gray-300 rounded-md shadow-sm focus:ring-gray-500 focus:border-gray-500" type="file" name="logo_img" accept="image/jpeg,image/png,image/jpg,image/gif" />
-                    <x-input-error :messages="$errors->get('logo_img')" class="mt-2" />
                 </div>
             </div>
 

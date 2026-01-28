@@ -42,17 +42,6 @@
                 </div>
             </div>
 
-            <!-- Username -->
-            <div class="flex items-start gap-4">
-                <label for="username" class="w-1/4 pt-2 text-sm font-medium text-gray-700 text-end pr-5">
-                    Username<span class="text-red-500"> *</span>
-                </label>
-                <div class="w-3/4">
-                    <x-text-input id="username" class="block w-full" type="text" name="username" :value="old('username')" required />
-                    <x-input-error :messages="$errors->get('username')" class="mt-2" />
-                </div>
-            </div>
-
             <!-- Email -->
             <div class="flex items-start gap-4">
                 <label for="emailid" class="w-1/4 pt-2 text-sm font-medium text-gray-700 text-end pr-5">
@@ -60,6 +49,7 @@
                 </label>
                 <div class="w-3/4">
                     <x-text-input id="emailid" class="block w-full" type="email" name="emailid" :value="old('emailid')" required />
+                    <p class="mt-1 text-xs text-gray-500">Use your business email (personal domains like Gmail/Yahoo are not allowed).</p>
                     <x-input-error :messages="$errors->get('emailid')" class="mt-2" />
                 </div>
             </div>
