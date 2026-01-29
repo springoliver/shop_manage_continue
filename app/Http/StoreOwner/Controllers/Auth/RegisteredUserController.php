@@ -37,11 +37,37 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $blockedDomains = [
+            'gmail.com',
+            'yahoo.com',
+            'hotmail.com',
+            'outlook.com',
+            'live.com',
+            'icloud.com',
+            'aol.com',
+            'msn.com',
+            'protonmail.com',
+            'yandex.com',
+            'gmx.com',
+        ];
+
         $validated = $request->validate([
             'firstname' => ['required', 'string', 'max:255'],
             'lastname' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'max:255'],
-            'emailid' => ['required', 'string', 'email', 'max:255', 'unique:stoma_storeowner,emailid'],
+            'emailid' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                'unique:stoma_storeowner,emailid',
+                function ($attribute, $value, $fail) use ($blockedDomains) {
+                    $domain = strtolower((string) strrchr($value, '@'));
+                    $domain = $domain ? ltrim($domain, '@') : '';
+                    if ($domain && in_array($domain, $blockedDomains, true)) {
+                        $fail('Please use a business email address (personal email domains are not allowed).');
+                    }
+                },
+            ],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'profile_photo' => ['nullable', 'image', 'max:2048'],
             'dateofbirth' => ['required', 'date'],
@@ -121,7 +147,6 @@ class RegisteredUserController extends Controller
         $validated = $request->validate([
             'ownerid' => ['required', 'exists:stoma_storeowner,ownerid'],
             'store_name' => ['required', 'string', 'max:255', 'unique:stoma_store,store_name'],
-            'typeid' => ['required', 'exists:stoma_storetype,typeid'],
             'address1' => ['required', 'string', 'max:255'],
             'address_lat1' => ['nullable', 'string'],
             'address_lng1' => ['nullable', 'string'],
@@ -135,26 +160,29 @@ class RegisteredUserController extends Controller
             'address_location_type1' => ['nullable', 'string'],
             'weburl' => ['required', 'url', 'max:255'],
             'store_email' => ['required', 'email', 'max:255'],
-            'logo_img' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
         ]);
 
-        // Handle logo upload
-        $logofile = null;
-        if ($request->hasFile('logo_img')) {
-            $logofile = $request->file('logo_img')->store('store-logos', 'public');
+        $storeTypeId = StoreType::where('status', 'Enable')
+            ->orderBy('store_type')
+            ->value('typeid');
+
+        if (! $storeTypeId) {
+            return redirect()->back()->withErrors([
+                'store_name' => 'No active store types are configured. Please contact admin.',
+            ])->withInput();
         }
 
         // Prepare store data
         $storeData = [
             'storeownerid' => $validated['ownerid'],
             'store_name' => $validated['store_name'],
-            'typeid' => $validated['typeid'],
+            'typeid' => $storeTypeId,
             'full_google_address' => $validated['address1'],
             'latitude' => $validated['address_lat1'] ?? null,
             'longitude' => $validated['address_lng1'] ?? null,
             'website_url' => $validated['weburl'],
             'store_email' => $validated['store_email'],
-            'logofile' => $logofile,
+            'logofile' => null,
             'insertdate' => now(),
             'insertip' => $request->ip(),
             'insertby' => 0,
@@ -169,7 +197,7 @@ class RegisteredUserController extends Controller
 
         // Copy departments from store type to store
         // Get departments by storetypeid (matching CI logic)
-        $departments = Department::where('storetypeid', $validated['typeid'])
+        $departments = Department::where('storetypeid', $storeTypeId)
             ->where('status', 'Enable')
             ->get();
 

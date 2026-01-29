@@ -17,6 +17,16 @@
             </div>
         @endif
 
+        @if ($errors->any())
+            <div class="mb-4 px-4 py-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                <ul class="list-disc list-inside text-sm">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('storeowner.register') }}" enctype="multipart/form-data" class="space-y-4">
             @csrf
 
@@ -380,5 +390,71 @@ MaxiManage.com will use your personal data to create an account with us and to s
             </div>
         </form>
     </div>
+
+    <script>
+        (function () {
+            const countrySelect = document.getElementById('country');
+            const addressInput = document.getElementById('address1');
+            const fields = {
+                lat: document.getElementById('address_lat'),
+                lng: document.getElementById('address_lng'),
+                formatted: document.getElementById('address_formatted_address'),
+                state: document.getElementById('address_state'),
+                city: document.getElementById('address_city'),
+                zip: document.getElementById('address_zipcode'),
+            };
+
+            function setCountryOption(countryName) {
+                if (!countrySelect || !countryName) {
+                    return;
+                }
+                const options = Array.from(countrySelect.options);
+                const match = options.find((opt) =>
+                    opt.textContent.toLowerCase().startsWith(countryName.toLowerCase())
+                );
+                if (match) {
+                    countrySelect.value = match.value;
+                }
+            }
+
+            function setAddressFields(address, lat, lng, displayName) {
+                if (fields.lat) fields.lat.value = lat ?? '';
+                if (fields.lng) fields.lng.value = lng ?? '';
+                if (fields.formatted) fields.formatted.value = displayName ?? '';
+                if (fields.state) fields.state.value = address?.state || address?.state_district || '';
+                if (fields.city) fields.city.value = address?.city || address?.town || address?.village || '';
+                if (fields.zip) fields.zip.value = address?.postcode || '';
+                if (addressInput && !addressInput.value) {
+                    addressInput.value = displayName ?? '';
+                }
+                setCountryOption(address?.country);
+            }
+
+            function reverseGeocode(lat, lng) {
+                const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+                fetch(url, { headers: { 'Accept': 'application/json' } })
+                    .then((res) => res.ok ? res.json() : null)
+                    .then((data) => {
+                        if (!data || !data.address) {
+                            return;
+                        }
+                        setAddressFields(data.address, lat, lng, data.display_name);
+                    })
+                    .catch(() => {});
+            }
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        reverseGeocode(lat, lng);
+                    },
+                    () => {},
+                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                );
+            }
+        })();
+    </script>
 </x-guest-layout>
 

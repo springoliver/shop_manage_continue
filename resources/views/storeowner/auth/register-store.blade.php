@@ -88,5 +88,62 @@
             </div>
         </form>
     </div>
+
+    <script>
+        (function () {
+            const addressInput = document.getElementById('address1');
+            const fields = {
+                lat: document.getElementById('address_lat1'),
+                lng: document.getElementById('address_lng1'),
+                formatted: document.getElementById('address_formatted_address1'),
+                streetNumber: document.getElementById('address_street_number1'),
+                street: document.getElementById('address_street1'),
+                state: document.getElementById('address_state1'),
+                country: document.getElementById('address_country1'),
+                city: document.getElementById('address_city1'),
+                zip: document.getElementById('address_zipcode1'),
+            };
+
+            function setAddressFields(address, lat, lng, displayName) {
+                if (fields.lat) fields.lat.value = lat ?? '';
+                if (fields.lng) fields.lng.value = lng ?? '';
+                if (fields.formatted) fields.formatted.value = displayName ?? '';
+                if (fields.streetNumber) fields.streetNumber.value = address?.house_number || '';
+                if (fields.street) fields.street.value = address?.road || '';
+                if (fields.state) fields.state.value = address?.state || address?.state_district || '';
+                if (fields.country) fields.country.value = address?.country || '';
+                if (fields.city) fields.city.value = address?.city || address?.town || address?.village || '';
+                if (fields.zip) fields.zip.value = address?.postcode || '';
+                if (addressInput && !addressInput.value) {
+                    addressInput.value = displayName ?? '';
+                }
+            }
+
+            function reverseGeocode(lat, lng) {
+                const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+                fetch(url, { headers: { 'Accept': 'application/json' } })
+                    .then((res) => res.ok ? res.json() : null)
+                    .then((data) => {
+                        if (!data || !data.address) {
+                            return;
+                        }
+                        setAddressFields(data.address, lat, lng, data.display_name);
+                    })
+                    .catch(() => {});
+            }
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        reverseGeocode(lat, lng);
+                    },
+                    () => {},
+                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                );
+            }
+        })();
+    </script>
 </x-guest-layout>
 
