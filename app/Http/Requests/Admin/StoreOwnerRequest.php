@@ -28,12 +28,6 @@ class StoreOwnerRequest extends FormRequest
         return [
             'firstname' => ['required', 'string', 'max:255'],
             'lastname' => ['required', 'string', 'max:255'],
-            'username' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('stoma_storeowner', 'username')->ignore($ownerid, 'ownerid'),
-            ],
             'emailid' => [
                 'required',
                 'email',
@@ -80,7 +74,6 @@ class StoreOwnerRequest extends FormRequest
     {
         return [
             'emailid.unique' => 'This email address is already registered.',
-            'username.unique' => 'This username is already taken.',
             'dateofbirth.before' => 'The date of birth must be a date before today.',
         ];
     }

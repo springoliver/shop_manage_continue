@@ -58,7 +58,7 @@
                     Email<span class="text-red-500"> *</span>
                 </label>
                 <div class="w-3/4">
-                    <x-text-input id="emailid" class="block w-full" type="email" name="emailid" :value="old('emailid')" required />
+                    <x-text-input id="emailid" class="block w-full" type="text" name="emailid" :value="old('emailid')" required />
                     <p class="mt-1 text-xs text-gray-500">Use your business email (personal domains like Gmail/Yahoo are not allowed).</p>
                     <x-input-error :messages="$errors->get('emailid')" class="mt-2" />
                 </div>

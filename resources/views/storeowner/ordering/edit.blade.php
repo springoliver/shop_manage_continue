@@ -99,7 +99,7 @@
                                                     <input type="number" id="quantity" name="quantity" value="" size="1" min="1" class="w-16 px-2 py-1 border border-gray-300 rounded-md text-center">
                                                 </td>
                                                 <td class="px-3 py-2 text-center">
-                                                    <button type="button" class="px-3 py-1 bg-gray-800 text-white rounded-md hover:bg-gray-700 text-sm" onclick="addToOrderSheet({{ $product->productid }}, this);">Add</button>
+                                                    <button type="button" class="px-3 py-1 bg-gray-800 text-white rounded-md hover:bg-gray-700 text-sm" onclick="addToOrderSheet('{{ $product->productid }}', this);">Add</button>
                                                 </td>
                                             </tr>
                                         @endforeach
@@ -174,7 +174,7 @@
                                                     </td>
                                                     <input type="hidden" name="purchasemeasuresid[]" value="{{ $product->purchasemeasuresid ?? 0 }}">
                                                     <td class="px-3 py-2 text-center">
-                                                        <a href="javascript:;" title="Remove" class="text-red-600 hover:text-red-800" onclick="removeFromOrderSheet({{ $product->productid }});">
+                                                        <a href="javascript:;" title="Remove" class="text-red-600 hover:text-red-800" onclick="removeFromOrderSheet('{{ $product->productid }}');">
                                                             <i class="fas fa-trash"></i>
                                                         </a>
                                                     </td>
@@ -260,7 +260,7 @@
                                 </table>
                             </div>
                             
-                            <input type="hidden" name="insertby" id="insertby" value="{{ auth('storeowner')->user()->username ?? '' }}"/>
+                            <input type="hidden" name="insertby" id="insertby" value="{{ auth('storeowner')->user()->emailid ?? '' }}"/>
                             <input type="hidden" name="order_total_price" id="total_price" value="{{ $purchaseOrder->total_amount ?? 0 }}">
                             <input type="hidden" name="order_total_tax" id="total_tax" value="{{ $purchaseOrder->total_tax ?? 0 }}">
                             <input type="hidden" name="order_total_inc_tax" id="total_inc_tax" value="{{ $purchaseOrder->amount_inc_tax ?? 0 }}">

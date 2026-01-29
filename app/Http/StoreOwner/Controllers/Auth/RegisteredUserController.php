@@ -10,11 +10,13 @@ use App\Models\UserGroup;
 use App\Models\Department;
 use App\Models\Module;
 use App\Models\PaidModule;
+use App\Models\EmailFormat;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 use Carbon\Carbon;
@@ -57,7 +59,7 @@ class RegisteredUserController extends Controller
             'emailid' => [
                 'required',
                 'string',
-                'email',
+                'regex:/^([^@\s]+@[^@\s]+|[A-Za-z0-9.-]+\.[A-Za-z]{2,})$/',
                 'max:255',
                 'unique:stoma_storeowner,emailid',
                 function ($attribute, $value, $fail) use ($blockedDomains) {
@@ -81,6 +83,8 @@ class RegisteredUserController extends Controller
             'address_city' => ['nullable', 'string'],
             'address_zipcode' => ['nullable', 'string'],
             'accept_terms' => ['required', 'accepted'],
+        ], [
+            'emailid.regex' => 'Please enter a business email or a business domain.',
         ]);
 
         // Handle profile photo upload
@@ -117,7 +121,7 @@ class RegisteredUserController extends Controller
 
         $storeOwner = StoreOwner::create($validated);
 
-        // TODO: Send activation email here
+        $this->sendActivationEmail($storeOwner);
         // Redirect to store registration page
         return redirect()->route('storeowner.register.store', ['ownerid' => $storeOwner->ownerid])
             ->with('success', 'Owner registered successfully. Please complete store registration.');
@@ -248,6 +252,40 @@ class RegisteredUserController extends Controller
 
         return redirect()->route('storeowner.login')
             ->with('success', 'You are registered successfully. You can login your account after activation.');
+    }
+
+    private function sendActivationEmail(StoreOwner $storeOwner): void
+    {
+        if (! filter_var($storeOwner->emailid, FILTER_VALIDATE_EMAIL)) {
+            return;
+        }
+
+        $emailFormat = EmailFormat::find(1);
+        if (! $emailFormat) {
+            return;
+        }
+
+        $activationLink = route('storeowner.activate', [
+            'token' => base64_encode((string) $storeOwner->ownerid),
+        ]);
+
+        $sitename = config('app.name', 'MaxiManage.com');
+        $replacements = [
+            '%username%' => trim($storeOwner->firstname . ' ' . $storeOwner->lastname),
+            '%useremail%' => $storeOwner->emailid,
+            '%sitename%' => $sitename,
+            '%userlink%' => $activationLink,
+            '%activationlink%' => $activationLink,
+        ];
+
+        $subject = strtr($emailFormat->varsubject, $replacements);
+        $body = strtr($emailFormat->varmailformat, $replacements);
+
+        Mail::send([], [], function ($message) use ($storeOwner, $subject, $body) {
+            $message->to($storeOwner->emailid)
+                ->subject($subject)
+                ->setBody($body, 'text/html');
+        });
     }
 }
 

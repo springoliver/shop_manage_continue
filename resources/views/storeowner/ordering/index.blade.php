@@ -183,7 +183,7 @@
                                             <input type="hidden" name="order_total_tax" id="total_tax" value="0">
                                             <input type="hidden" name="order_total_inc_tax" id="total_inc_tax" value="0">
                                             <input type="hidden" name="order_supplier_id" id="supplier_id" value="">
-                                            <input type="hidden" name="insertby" id="insertby" value="{{ Auth::guard('storeowner')->user()->username ?? '' }}">
+                                            <input type="hidden" name="insertby" id="insertby" value="{{ Auth::guard('storeowner')->user()->emailid ?? '' }}">
                                         </tfoot>
                                     </table>
                                 </div>

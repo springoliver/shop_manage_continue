@@ -56,7 +56,6 @@
                 </div>
                 <div class="flex-1">
                     <h2 class="text-2xl font-bold text-gray-900 mb-2">{{ $storeOwner->firstname }} {{ $storeOwner->lastname }}</h2>
-                    <p class="text-gray-600 mb-2">@<span class="font-medium">{{ $storeOwner->username }}</span></p>
                     @if ($storeOwner->status === 'Active')
                         <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                             Active

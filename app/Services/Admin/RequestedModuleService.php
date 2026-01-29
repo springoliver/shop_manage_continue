@@ -48,7 +48,7 @@ class RequestedModuleService
                 's.storeid',
                 's.storeownerid',
                 's.store_email',
-                'sto.username'
+                'sto.emailid'
             ])
             ->leftJoin('stoma_store as s', 's.storeid', '=', 'rm.storeid')
             ->leftJoin('stoma_storeowner as sto', 'sto.ownerid', '=', 's.storeownerid')

@@ -71,19 +71,6 @@
                         @enderror
                     </div>
 
-                    <!-- User Name -->
-                    <div>
-                        <label for="username" class="block text-sm font-medium text-gray-700 mb-2">
-                            User Name <span class="text-red-500">*</span>
-                        </label>
-                        <input type="text" name="username" id="username" value="{{ old('username') }}"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-gray-500 focus:border-gray-500 @error('username') border-red-500 @enderror"
-                            required>
-                        @error('username')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
                     <!-- Email -->
                     <div>
                         <label for="emailid" class="block text-sm font-medium text-gray-700 mb-2">

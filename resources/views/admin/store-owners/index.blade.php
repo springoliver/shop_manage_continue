@@ -51,9 +51,6 @@
                                 Name
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                User Name
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Email
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -79,17 +76,16 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">{{ $storeOwner->username }}</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">{{ $storeOwner->emailid }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">{{ $storeOwner->phone }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <button type="button" onclick="openStatusModal({{ $storeOwner->ownerid }}, '{{ $storeOwner->status }}')" 
-                                        class="px-2 py-1 text-xs font-semibold rounded-full {{ $storeOwner->status === 'Active' ? 'bg-green-100 text-green-800' : ($storeOwner->status === 'Pending Setup' ? 'bg-yellow-100 text-yellow-800' : ($storeOwner->status === 'Suspended' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800')) }}">
+                                    <button type="button"
+                                        data-ownerid="{{ $storeOwner->ownerid }}"
+                                        data-status="{{ $storeOwner->status }}"
+                                        class="js-open-status px-2 py-1 text-xs font-semibold rounded-full {{ $storeOwner->status === 'Active' ? 'bg-green-100 text-green-800' : ($storeOwner->status === 'Pending Setup' ? 'bg-yellow-100 text-yellow-800' : ($storeOwner->status === 'Suspended' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800')) }}">
                                         {{ $storeOwner->status }}
                                     </button>
                                 </td>
@@ -116,7 +112,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
+                                <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
                                     No store owners found.
                                 </td>
                             </tr>
@@ -207,6 +203,12 @@
         function closeStatusModal() {
             document.getElementById('statusModal').classList.add('hidden');
         }
+
+        document.querySelectorAll('.js-open-status').forEach((button) => {
+            button.addEventListener('click', () => {
+                openStatusModal(button.dataset.ownerid, button.dataset.status);
+            });
+        });
     </script>
     @endpush
 </x-admin-app-layout>

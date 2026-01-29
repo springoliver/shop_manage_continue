@@ -41,7 +41,6 @@ class StoreOwner extends Authenticatable implements MustVerifyEmail
     protected $fillable = [
         'firstname',
         'lastname',
-        'username',
         'emailid',
         'password',
         'remember_token',
