@@ -49,8 +49,8 @@ Route::name('storeowner.')->group(function () {
 
         Route::post('register/store', [StoreOwnerRegisteredUserController::class, 'storeRegister']);
 
-        Route::get('activate/{token}', [StoreOwnerActivationController::class, 'activate'])
-            ->name('activate');
+        Route::get('login/active/{token}', [StoreOwnerActivationController::class, 'activate'])
+            ->name('activate-link');
 
         Route::get('forgot-password', [StoreOwnerPasswordResetLinkController::class, 'create'])
             ->name('password.request');

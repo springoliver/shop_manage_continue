@@ -3,6 +3,7 @@
 namespace App\Http\StoreOwner\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Store;
 use App\Models\StoreOwner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,21 +34,32 @@ class ActivationController extends Controller
                     ->with('error', 'Invalid activation link.');
             }
 
-            // Check if already activated
-            if ($storeOwner->status === 'Active') {
-                return redirect()->route('storeowner.login')
-                    ->with('error', 'Your account is already activated. You can login to your account with your email and password.');
+            $updatedOwner = false;
+            if ($storeOwner->status !== 'Active') {
+                // Activate the account
+                $storeOwner->update([
+                    'status' => 'Active',
+                    'editdate' => now(),
+                    'editip' => request()->ip(),
+                ]);
+                $updatedOwner = true;
             }
 
-            // Activate the account
-            $storeOwner->update([
-                'status' => 'Active',
-                'editdate' => now(),
-                'editip' => request()->ip(),
-            ]);
+            // Activate any pending stores for this owner
+            Store::where('storeownerid', $storeOwner->ownerid)
+                ->whereIn('status', ['Pending Setup', 'Pending Activation'])
+                ->update([
+                    'status' => 'Active',
+                    'editdate' => now(),
+                    'editip' => request()->ip(),
+                    'editby' => 0,
+                ]);
 
             return redirect()->route('storeowner.login')
-                ->with('success', 'Your account is activated successfully. You can login to your account with your email and password.');
+                ->with('success', $updatedOwner
+                    ? 'Your account is activated successfully. You can login to your account with your email and password.'
+                    : 'Your account is already activated. You can login to your account with your email and password.'
+                );
         } catch (\Exception $e) {
             return redirect()->route('storeowner.login')
                 ->with('error', 'There occurred some error in activating your account!');

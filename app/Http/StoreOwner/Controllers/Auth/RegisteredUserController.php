@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 use Carbon\Carbon;
@@ -40,7 +41,6 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $blockedDomains = [
-            'gmail.com',
             'yahoo.com',
             'hotmail.com',
             'outlook.com',
@@ -121,7 +121,6 @@ class RegisteredUserController extends Controller
 
         $storeOwner = StoreOwner::create($validated);
 
-        $this->sendActivationEmail($storeOwner);
         // Redirect to store registration page
         return redirect()->route('storeowner.register.store', ['ownerid' => $storeOwner->ownerid])
             ->with('success', 'Owner registered successfully. Please complete store registration.');
@@ -250,8 +249,13 @@ class RegisteredUserController extends Controller
         
         // TODO: Send notification email to admin
 
+        $storeOwner = StoreOwner::find($validated['ownerid']);
+        if ($storeOwner) {
+            $this->sendActivationEmail($storeOwner);
+        }
+
         return redirect()->route('storeowner.login')
-            ->with('success', 'You are registered successfully. You can login your account after activation.');
+            ->with('success', 'You are registered successfully. Please check your email to activate your account.');
     }
 
     private function sendActivationEmail(StoreOwner $storeOwner): void
@@ -265,11 +269,11 @@ class RegisteredUserController extends Controller
             return;
         }
 
-        $activationLink = route('storeowner.activate', [
+        $activationLink = route('storeowner.activate-link', [
             'token' => base64_encode((string) $storeOwner->ownerid),
         ]);
 
-        $sitename = config('app.name', 'MaxiManage.com');
+        $sitename = config('app.name');
         $replacements = [
             '%username%' => trim($storeOwner->firstname . ' ' . $storeOwner->lastname),
             '%useremail%' => $storeOwner->emailid,
@@ -281,11 +285,19 @@ class RegisteredUserController extends Controller
         $subject = strtr($emailFormat->varsubject, $replacements);
         $body = strtr($emailFormat->varmailformat, $replacements);
 
-        Mail::send([], [], function ($message) use ($storeOwner, $subject, $body) {
-            $message->to($storeOwner->emailid)
-                ->subject($subject)
-                ->setBody($body, 'text/html');
-        });
+        try {
+            Mail::send([], [], function ($message) use ($storeOwner, $subject, $body) {
+                $message->to($storeOwner->emailid)
+                    ->subject($subject)
+                    ->html($body);
+            });
+        } catch (\Throwable $e) {
+            Log::error('Activation email failed', [
+                'storeowner_id' => $storeOwner->ownerid,
+                'email' => $storeOwner->emailid,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }
 
