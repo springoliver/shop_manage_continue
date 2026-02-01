@@ -153,6 +153,14 @@ class StoreOwner extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Route notifications for the mail channel.
+     */
+    public function routeNotificationForMail(): ?string
+    {
+        return $this->emailid;
+    }
+
+    /**
      * Get the stores owned by this store owner.
      */
     public function stores(): \Illuminate\Database\Eloquent\Relations\HasMany

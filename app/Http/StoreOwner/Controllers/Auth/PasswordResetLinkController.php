@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\StoreOwner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\View\View;
 
@@ -47,14 +48,30 @@ class PasswordResetLinkController extends Controller
 
         // Use the password broker to send reset link
         // The custom user provider will handle emailid column mapping
-        $status = Password::broker('storeowners')->sendResetLink(
-            ['email' => $request->emailid]
-        );
+        try {
+            $status = Password::broker('storeowners')->sendResetLink(
+                ['email' => $request->emailid]
+            );
+        } catch (\Throwable $e) {
+            Log::error('Storeowner reset link failed', [
+                'email' => $request->emailid,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->withInput($request->only('emailid'))
+                ->withErrors(['emailid' => 'Failed to send reset link. Please try again later.']);
+        }
+
+        Log::info('Storeowner reset link status', [
+            'email' => $request->emailid,
+            'status' => $status,
+            'mailer' => config('mail.default'),
+        ]);
 
         return $status == Password::RESET_LINK_SENT
-                    ? back()->with('status', __($status))
-                    : back()->withInput($request->only('emailid'))
-                        ->withErrors(['emailid' => __($status)]);
+            ? back()->with('status', __($status))
+            : back()->withInput($request->only('emailid'))
+                ->withErrors(['emailid' => __($status)]);
     }
 }
 
