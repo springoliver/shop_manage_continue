@@ -30,28 +30,53 @@ class ModuleSettingController extends Controller
             ->get();
         $storecount = $multistore->count();
         
-        // Get installed modules (active, not expired)
-        $curDate = date('Y-m-d');
-        $installModule = PaidModule::with('module')
+        $curDate = Carbon::now();
+
+        // Get latest paid_module per module (for this store)
+        $latestPaidModules = PaidModule::with('module.dependencies')
             ->where('storeid', $storeid)
-            ->whereDate('purchase_date', '<=', $curDate)
-            ->whereDate('expire_date', '>=', $curDate)
+            ->orderBy('insertdatetime', 'desc')
             ->get()
-            ->map(function($pm) {
-                return [
-                    'moduleid' => $pm->moduleid,
-                    'module' => $pm->module->module ?? '',
-                    'price_1months' => $pm->module->price_1months ?? 0,
-                    'module_description' => $pm->module->module_description ?? '',
-                    'module_detailed_info' => $pm->module->module_detailed_info ?? '',
-                    'expire_date' => $pm->expire_date,
-                    'isTrial' => $pm->isTrial,
-                ];
-            })
-            ->toArray();
-        
-        // Get all modules
-        $allModule = Module::get()->toArray();
+            ->groupBy('moduleid')
+            ->map->first()
+            ->values();
+
+        // Installed modules (active, not expired)
+        $installedModules = $latestPaidModules->filter(function (PaidModule $pm) use ($curDate) {
+            if (! $pm->purchase_date || ! $pm->expire_date) {
+                return false;
+            }
+
+            return $pm->purchase_date->startOfDay() <= $curDate
+                && $pm->expire_date->endOfDay() >= $curDate;
+        })->values();
+
+        $installedModuleIds = $installedModules->pluck('moduleid')->all();
+
+        // Available modules (not installed)
+        $availableModules = Module::with('dependencies')
+            ->where('status', 'Enable')
+            ->whereNotIn('moduleid', $installedModuleIds)
+            ->get();
+
+        // Renewal due list (within 60 days)
+        $renewalsDue = $latestPaidModules->filter(function (PaidModule $pm) use ($curDate) {
+            if (! $pm->expire_date) {
+                return false;
+            }
+
+            $daysRemaining = $curDate->diffInDays($pm->expire_date, false);
+            return $daysRemaining <= 60;
+        })->map(function (PaidModule $pm) use ($curDate) {
+            $pm->days_remaining = $curDate->diffInDays($pm->expire_date, false);
+            return $pm;
+        })->values();
+
+        // Billing history (all paid modules)
+        $billingItems = PaidModule::with('module')
+            ->where('storeid', $storeid)
+            ->orderBy('purchase_date', 'desc')
+            ->get();
         
         // Get all installed modules (latest by insertdatetime, grouped by moduleid)
         $allinstallModule = DB::select("
@@ -107,8 +132,10 @@ class ModuleSettingController extends Controller
         }
         
         return view('storeowner.modulesetting.index', compact(
-            'installModule',
-            'allModule',
+            'installedModules',
+            'availableModules',
+            'renewalsDue',
+            'billingItems',
             'allinstallModule',
             'diff',
             'storecount',
@@ -286,6 +313,7 @@ class ModuleSettingController extends Controller
         $moduleid = base64_decode($request->input('moduleid'));
         $status = $request->input('status'); // For multi-store discount
         $install = $request->input('install'); // For single store
+        $plan = $request->input('plan', 'monthly');
         
         $storeid = session('storeid', 0);
         $user = auth('storeowner')->user();
@@ -296,10 +324,21 @@ class ModuleSettingController extends Controller
         }
         
         // Check if module exists
-        $module = Module::find($moduleid);
+        $module = Module::with('dependencies')->find($moduleid);
         if (!$module) {
             return redirect()->route('storeowner.modulesetting.index')
                 ->with('error', 'Module not found.');
+        }
+
+        $activeModuleIds = $this->getActiveModuleIds($storeid);
+        $missingDependencies = $module->dependencies
+            ->whereNotIn('moduleid', $activeModuleIds)
+            ->pluck('module')
+            ->all();
+
+        if (! empty($missingDependencies)) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Please install required modules first: ' . implode(', ', $missingDependencies) . '.');
         }
         
         // Check if module is already installed (active, not expired)
@@ -324,10 +363,12 @@ class ModuleSettingController extends Controller
             $isTrial = 1;
             $paidAmount = '0.00';
         } else {
-            // Default to 30 days (1 month) - can be changed to payment flow later
-            $expireDate = Carbon::now()->addDays(30)->endOfDay();
+            $months = $plan === 'yearly' ? 12 : 1;
+            $expireDate = Carbon::now()->addMonths($months)->endOfDay();
             $isTrial = 0;
-            $paidAmount = $module->price_1months ?? '0.00';
+            $paidAmount = $plan === 'yearly'
+                ? ($module->price_12months ?? '0.00')
+                : ($module->price_1months ?? '0.00');
         }
         
         // Apply discount for multi-store owners (20% discount)
@@ -361,5 +402,106 @@ class ModuleSettingController extends Controller
         
         return redirect()->route('storeowner.modulesetting.index')
             ->with('success', 'Module installed successfully.');
+    }
+
+    /**
+     * Handle bulk module installation request.
+     */
+    public function installSelected(Request $request): RedirectResponse
+    {
+        $moduleIds = $request->input('modules', []);
+        if (empty($moduleIds)) {
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Please select at least one module to install.');
+        }
+
+        $storeid = session('storeid', 0);
+        $user = auth('storeowner')->user();
+        $selectedIds = array_map('intval', $moduleIds);
+        $planSelections = $request->input('plan', []);
+
+        $activeModuleIds = $this->getActiveModuleIds($storeid);
+        $modules = Module::with('dependencies')
+            ->whereIn('moduleid', $selectedIds)
+            ->get()
+            ->keyBy('moduleid');
+
+        $missing = [];
+        foreach ($modules as $module) {
+            $requiredIds = $module->dependencies->pluck('moduleid')->all();
+            foreach ($requiredIds as $depId) {
+                if (! in_array($depId, $activeModuleIds, true) && ! in_array($depId, $selectedIds, true)) {
+                    $missing[$module->module][] = $module->dependencies
+                        ->firstWhere('moduleid', $depId)
+                        ?->module;
+                }
+            }
+        }
+
+        if (! empty($missing)) {
+            $messages = [];
+            foreach ($missing as $moduleName => $deps) {
+                $messages[] = $moduleName . ' requires ' . implode(', ', array_filter($deps));
+            }
+
+            return redirect()->route('storeowner.modulesetting.index')
+                ->with('error', 'Please install required modules first. ' . implode(' | ', $messages));
+        }
+
+        foreach ($modules as $module) {
+            $plan = $planSelections[$module->moduleid] ?? 'monthly';
+
+            // Skip if already installed
+            $existingPaidModule = PaidModule::where('storeid', $storeid)
+                ->where('moduleid', $module->moduleid)
+                ->whereDate('purchase_date', '<=', Carbon::now())
+                ->whereDate('expire_date', '>=', Carbon::now())
+                ->first();
+
+            if ($existingPaidModule) {
+                continue;
+            }
+
+            $purchaseDate = Carbon::now()->startOfDay();
+            if ($module->free_days > 0) {
+                $expireDate = Carbon::now()->addDays($module->free_days)->endOfDay();
+                $isTrial = 1;
+                $paidAmount = '0.00';
+            } else {
+                $months = $plan === 'yearly' ? 12 : 1;
+                $expireDate = Carbon::now()->addMonths($months)->endOfDay();
+                $isTrial = 0;
+                $paidAmount = $plan === 'yearly'
+                    ? ($module->price_12months ?? '0.00')
+                    : ($module->price_1months ?? '0.00');
+            }
+
+            PaidModule::create([
+                'storeid' => $storeid,
+                'moduleid' => $module->moduleid,
+                'purchase_date' => $purchaseDate,
+                'expire_date' => $expireDate,
+                'paid_amount' => $paidAmount,
+                'status' => 'Enable',
+                'insertdatetime' => now(),
+                'insertip' => $request->ip(),
+                'isTrial' => $isTrial,
+            ]);
+        }
+
+        return redirect()->route('storeowner.modulesetting.index')
+            ->with('success', 'Selected modules installed successfully.');
+    }
+
+    private function getActiveModuleIds(int $storeid): array
+    {
+        $curDate = Carbon::now();
+
+        return PaidModule::where('storeid', $storeid)
+            ->whereDate('purchase_date', '<=', $curDate)
+            ->whereDate('expire_date', '>=', $curDate)
+            ->pluck('moduleid')
+            ->unique()
+            ->all();
     }
 }

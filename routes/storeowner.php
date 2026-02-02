@@ -126,6 +126,7 @@ Route::name('storeowner.')->group(function () {
         Route::get('modulesetting/edit/{usergroupid}', [StoreOwnerModuleSettingController::class, 'edit'])->name('modulesetting.edit');
         Route::post('modulesetting/update', [StoreOwnerModuleSettingController::class, 'update'])->name('modulesetting.update');
         Route::post('modulesetting/install', [StoreOwnerModuleSettingController::class, 'install'])->name('modulesetting.install');
+        Route::post('modulesetting/install-selected', [StoreOwnerModuleSettingController::class, 'installSelected'])->name('modulesetting.install-selected');
 
         // Roster routes (Base Roster)
         Route::get('roster', [StoreOwnerRosterController::class, 'index'])->name('roster.index');
