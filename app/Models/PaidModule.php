@@ -47,6 +47,8 @@ class PaidModule extends Model
         'paypal_profile_id',
         'transactionid',
         'isTrial',
+        'auto_renew',
+        'billing_cycle',
     ];
 
     /**
@@ -62,6 +64,7 @@ class PaidModule extends Model
             'paid_amount' => 'decimal:2',
             'insertdatetime' => 'datetime',
             'isTrial' => 'boolean',
+            'auto_renew' => 'boolean',
         ];
     }
 

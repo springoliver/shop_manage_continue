@@ -41,6 +41,16 @@ class ModuleSettingController extends Controller
             ->map->first()
             ->values();
 
+        $this->autoRenewExpiredModules($latestPaidModules, $storeid);
+
+        $latestPaidModules = PaidModule::with('module.dependencies')
+            ->where('storeid', $storeid)
+            ->orderBy('insertdatetime', 'desc')
+            ->get()
+            ->groupBy('moduleid')
+            ->map->first()
+            ->values();
+
         // Installed modules (active, not expired)
         $installedModules = $latestPaidModules->filter(function (PaidModule $pm) use ($curDate) {
             if (! $pm->purchase_date || ! $pm->expire_date) {
@@ -49,6 +59,11 @@ class ModuleSettingController extends Controller
 
             return $pm->purchase_date->startOfDay() <= $curDate
                 && $pm->expire_date->endOfDay() >= $curDate;
+        })->values();
+
+        $installedModules = $installedModules->sortBy(function (PaidModule $pm) {
+            $name = strtolower($pm->module->module ?? '');
+            return $name === 'employee' ? 0 : 1;
         })->values();
 
         $installedModuleIds = $installedModules->pluck('moduleid')->all();
@@ -395,6 +410,8 @@ class ModuleSettingController extends Controller
             'insertdatetime' => now(),
             'insertip' => $request->ip(),
             'isTrial' => $isTrial,
+            'auto_renew' => 0,
+            'billing_cycle' => $plan === 'yearly' ? 'yearly' : 'monthly',
         ]);
         
         // TODO: Send email notification (similar to CI's buymodule controller)
@@ -486,11 +503,28 @@ class ModuleSettingController extends Controller
                 'insertdatetime' => now(),
                 'insertip' => $request->ip(),
                 'isTrial' => $isTrial,
+                'auto_renew' => 0,
+                'billing_cycle' => $plan === 'yearly' ? 'yearly' : 'monthly',
             ]);
         }
 
         return redirect()->route('storeowner.modulesetting.index')
             ->with('success', 'Selected modules installed successfully.');
+    }
+
+    public function updateAutoRenew(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'pmid' => ['required', 'integer', 'exists:stoma_paid_module,pmid'],
+            'auto_renew' => ['required', 'in:0,1'],
+        ]);
+
+        PaidModule::where('pmid', $validated['pmid'])->update([
+            'auto_renew' => (int) $validated['auto_renew'],
+        ]);
+
+        return redirect()->route('storeowner.modulesetting.index', ['tab' => 'installed'])
+            ->with('success', 'Auto renew updated.');
     }
 
     private function getActiveModuleIds(int $storeid): array
@@ -503,5 +537,45 @@ class ModuleSettingController extends Controller
             ->pluck('moduleid')
             ->unique()
             ->all();
+    }
+
+    private function autoRenewExpiredModules($latestPaidModules, int $storeid): void
+    {
+        $now = Carbon::now();
+
+        foreach ($latestPaidModules as $pm) {
+            if (! $pm->auto_renew) {
+                continue;
+            }
+
+            if (! $pm->expire_date || $pm->expire_date->endOfDay() >= $now) {
+                continue;
+            }
+
+            $module = $pm->module;
+            if (! $module) {
+                continue;
+            }
+
+            $billingCycle = $pm->billing_cycle === 'yearly' ? 'yearly' : 'monthly';
+            $months = $billingCycle === 'yearly' ? 12 : 1;
+            $paidAmount = $billingCycle === 'yearly'
+                ? ($module->price_12months ?? $pm->paid_amount)
+                : ($module->price_1months ?? $pm->paid_amount);
+
+            PaidModule::create([
+                'storeid' => $storeid,
+                'moduleid' => $module->moduleid,
+                'purchase_date' => $now->copy()->startOfDay(),
+                'expire_date' => $now->copy()->addMonths($months)->endOfDay(),
+                'paid_amount' => $paidAmount,
+                'status' => 'Enable',
+                'insertdatetime' => now(),
+                'insertip' => request()->ip(),
+                'isTrial' => 0,
+                'auto_renew' => 1,
+                'billing_cycle' => $billingCycle,
+            ]);
+        }
     }
 }

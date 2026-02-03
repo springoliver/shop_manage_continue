@@ -105,11 +105,11 @@
                                             <a href="#" class="text-gray-700 hover:underline" onclick="event.preventDefault(); openModuleInfoModal('module-info{{ $module->moduleid }}')">
                                                 More info &gt;&gt;
                                             </a>
-                                            @if ($module->dependencies->isNotEmpty())
+                                            <!-- @if ($module->dependencies->isNotEmpty())
                                                 <div class="text-xs text-gray-500 mt-1">
                                                     Requires: {{ $module->dependencies->pluck('module')->join(', ') }}
                                                 </div>
-                                            @endif
+                                            @endif -->
                                         </td>
                                         <td class="px-4 py-3">
                                             <label class="inline-flex items-center text-sm text-gray-700">
@@ -157,8 +157,12 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-800 text-white text-xs uppercase">
                             <tr>
+                                <th class="px-4 py-3 text-left">
+                                    <input type="checkbox" id="select-all-installed" class="rounded border-gray-300">
+                                </th>
                                 <th class="px-4 py-3 text-left">Modules</th>
                                 <th class="px-4 py-3 text-left">Auto Renew</th>
+                                <th class="px-4 py-3 text-left">Payment Method</th>
                                 <th class="px-4 py-3 text-left">Renewal Term</th>
                                 <th class="px-4 py-3 text-left">Due Date</th>
                                 <th class="px-4 py-3 text-left">Expires</th>
@@ -168,21 +172,53 @@
                         <tbody class="divide-y divide-gray-200">
                             @forelse ($installedModules as $pm)
                                 @php
-                                    $expiresIn = $pm->expire_date ? now()->diffInDays($pm->expire_date, false) : null;
+                                    $expiresIn = $pm->expire_date ? (int) now()->diffInDays($pm->expire_date, false) : null;
+                                    $moduleName = strtolower($pm->module->module ?? '');
+                                    $isEmployeesModule = $moduleName === 'employee';
+                                    $renewalTerm = $isEmployeesModule
+                                        ? 'STANDARD / CORE MODULE'
+                                        : '1 yr for €' . number_format(($pm->paid_amount ?? 0), 0);
                                 @endphp
                                 <tr>
+                                    <td class="px-4 py-3">
+                                        <input type="checkbox" class="installed-select rounded border-gray-300">
+                                    </td>
                                     <td class="px-4 py-3 font-medium text-gray-900">
                                         {{ $pm->module->module ?? 'Unknown' }}
                                     </td>
-                                    <td class="px-4 py-3 text-gray-700">OFF</td>
                                     <td class="px-4 py-3 text-gray-700">
-                                        {{ $pm->isTrial ? 'Freemium' : 'Standard / Core Module' }}
+                                        @if (!$isEmployeesModule)
+                                            <form method="POST" action="{{ route('storeowner.modulesetting.auto-renew') }}" class="inline auto-renew-form">
+                                                @csrf
+                                                <input type="hidden" name="pmid" value="{{ $pm->pmid }}">
+                                                <input type="hidden" name="auto_renew" value="{{ $pm->auto_renew ? 1 : 0 }}">
+                                                <label class="inline-flex items-center cursor-pointer">
+                                                    <input type="checkbox" class="sr-only auto-renew-toggle" {{ $pm->auto_renew ? 'checked' : '' }} />
+                                                    <span class="w-10 h-5 rounded-full relative transition auto-renew-track {{ $pm->auto_renew ? 'bg-green-500' : 'bg-gray-300' }}">
+                                                        <span class="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition auto-renew-thumb {{ $pm->auto_renew ? 'translate-x-5' : 'translate-x-0' }}"></span>
+                                                    </span>
+                                                    <span class="ml-2 text-xs font-semibold text-gray-600 auto-renew-label">{{ $pm->auto_renew ? 'ON' : 'OFF' }}</span>
+                                                </label>
+                                            </form>
+                                        @endif
                                     </td>
                                     <td class="px-4 py-3 text-gray-700">
-                                        {{ $pm->expire_date?->format('m/d/Y') ?? '-' }}
+                                        @if (!$isEmployeesModule)
+                                            <select class="border border-gray-300 rounded-md pl-2 pr-8 py-1 text-sm">
+                                                <option value="">Add new card</option>
+                                            </select>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-700">
+                                        {{ $renewalTerm }}
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-700">
+                                        {{ $isEmployeesModule ? '-' : ($pm->expire_date?->format('m/d/Y') ?? '-') }}
                                     </td>
                                     <td class="px-4 py-3">
-                                        @if (is_null($expiresIn))
+                                        @if ($isEmployeesModule)
+                                            
+                                        @elseif (is_null($expiresIn))
                                             -
                                         @elseif ($expiresIn < 0)
                                             <span class="text-red-600">Expired</span>
@@ -193,17 +229,29 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-3">
-                                        <span class="px-3 py-1 rounded text-xs font-semibold bg-green-500 text-white">Installed</span>
+                                        @if ($isEmployeesModule)
+                                            <span class="px-3 py-1 rounded font-semibold bg-green-500 text-white">Freemium</span>
+                                        @else
+                                            <button class="px-3 py-1 bg-gray-200 text-gray-700 rounded">Renew</button>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-4 py-6 text-center text-gray-500">No installed modules.</td>
+                                    <td colspan="8" class="px-4 py-6 text-center text-gray-500">No installed modules.</td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
+
+                @if ($installedModules->isNotEmpty())
+                    <div class="mt-4">
+                        <button type="button" class="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800">
+                            Renew all selected Modules
+                        </button>
+                    </div>
+                @endif
             </div>
 
             <!-- Renewals Due -->
@@ -352,9 +400,46 @@
             button.addEventListener('click', () => showModuleTab(button.dataset.tab));
         });
 
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialTab = urlParams.get('tab');
+        if (initialTab === 'installed') {
+            showModuleTab('tab-installed');
+        } else if (initialTab === 'renewals') {
+            showModuleTab('tab-renewals');
+        } else if (initialTab === 'billing') {
+            showModuleTab('tab-billing');
+        }
+
         document.getElementById('select-all-modules')?.addEventListener('change', function () {
             document.querySelectorAll('.module-select').forEach(cb => {
                 cb.checked = this.checked;
+            });
+        });
+
+        document.getElementById('select-all-installed')?.addEventListener('change', function () {
+            document.querySelectorAll('.installed-select').forEach(cb => {
+                cb.checked = this.checked;
+            });
+        });
+
+        document.querySelectorAll('.auto-renew-toggle').forEach(toggle => {
+            toggle.addEventListener('change', function () {
+                const label = this.closest('label')?.querySelector('.auto-renew-label');
+                const track = this.closest('label')?.querySelector('.auto-renew-track');
+                const thumb = this.closest('label')?.querySelector('.auto-renew-thumb');
+                const form = this.closest('form');
+                const hidden = form?.querySelector('input[name="auto_renew"]');
+                if (!label) return;
+                label.textContent = this.checked ? 'ON' : 'OFF';
+                if (track && thumb) {
+                    track.classList.toggle('bg-green-500', this.checked);
+                    track.classList.toggle('bg-gray-300', !this.checked);
+                    thumb.style.transform = this.checked ? 'translateX(20px)' : 'translateX(0)';
+                }
+                if (hidden && form) {
+                    hidden.value = this.checked ? '1' : '0';
+                    form.submit();
+                }
             });
         });
 

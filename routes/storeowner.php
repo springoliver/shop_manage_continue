@@ -127,6 +127,7 @@ Route::name('storeowner.')->group(function () {
         Route::post('modulesetting/update', [StoreOwnerModuleSettingController::class, 'update'])->name('modulesetting.update');
         Route::post('modulesetting/install', [StoreOwnerModuleSettingController::class, 'install'])->name('modulesetting.install');
         Route::post('modulesetting/install-selected', [StoreOwnerModuleSettingController::class, 'installSelected'])->name('modulesetting.install-selected');
+        Route::post('modulesetting/auto-renew', [StoreOwnerModuleSettingController::class, 'updateAutoRenew'])->name('modulesetting.auto-renew');
 
         // Roster routes (Base Roster)
         Route::get('roster', [StoreOwnerRosterController::class, 'index'])->name('roster.index');
