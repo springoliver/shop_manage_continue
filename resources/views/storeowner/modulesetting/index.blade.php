@@ -204,8 +204,14 @@
                                     </td>
                                     <td class="px-4 py-3 text-gray-700">
                                         @if (!$isEmployeesModule)
-                                            <select class="border border-gray-300 rounded-md pl-2 pr-8 py-1 text-sm">
-                                                <option value="">Add new card</option>
+                                            <select class="border border-gray-300 rounded-md pl-2 pr-8 py-1 text-sm payment-card-select">
+                                                <option value="">Select card</option>
+                                                @foreach ($paymentCards as $card)
+                                                    <option value="{{ $card->cardid }}">
+                                                        {{ $card->card_brand ?? 'Card' }} **** {{ $card->card_last4 }} ({{ sprintf('%02d', $card->expiry_month) }}/{{ $card->expiry_year }})
+                                                    </option>
+                                                @endforeach
+                                                <option value="add_new">+ Add new card</option>
                                             </select>
                                         @endif
                                     </td>
@@ -443,6 +449,8 @@
             });
         });
 
+        // Add new card button triggers the billing modal
+
         document.querySelectorAll('.plan-radio').forEach(radio => {
             radio.addEventListener('change', function () {
                 const moduleId = this.dataset.module;
@@ -468,5 +476,14 @@
                 document.body.style.overflow = '';
             }
         }
+
+        document.querySelectorAll('.payment-card-select').forEach(select => {
+            select.addEventListener('change', function () {
+                if (this.value === 'add_new') {
+                    window.location.href = "{{ route('storeowner.modulesetting.payment-cards') }}";
+                    this.value = '';
+                }
+            });
+        });
     </script>
 </x-storeowner-app-layout>

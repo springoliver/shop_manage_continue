@@ -9637,6 +9637,25 @@ CREATE TABLE `stoma_paid_module` (
   CONSTRAINT `stoma_paid_module_storeid_foreign` FOREIGN KEY (`storeid`) REFERENCES `stoma_store` (`storeid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+DROP TABLE IF EXISTS `stoma_payment_card`;
+CREATE TABLE `stoma_payment_card` (
+  `cardid` int unsigned NOT NULL AUTO_INCREMENT,
+  `storeid` bigint unsigned NOT NULL,
+  `ownerid` bigint unsigned NOT NULL,
+  `name_on_card` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `card_last4` varchar(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `card_brand` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `expiry_month` tinyint unsigned NOT NULL,
+  `expiry_year` smallint unsigned NOT NULL,
+  `status` enum('Active','Inactive') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Active',
+  `insertdate` timestamp NULL DEFAULT NULL,
+  `insertip` varchar(51) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `editdate` timestamp NULL DEFAULT NULL,
+  `editip` varchar(51) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`cardid`),
+  KEY `stoma_payment_card_storeid_ownerid_index` (`storeid`,`ownerid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO `stoma_paid_module` (`pmid`, `storeid`, `moduleid`, `purchase_date`, `expire_date`, `paid_amount`, `status`, `insertdatetime`, `insertip`, `paypal_profile_id`, `transactionid`, `isTrial`) VALUES
 (1,	1,	1,	'2025-12-05 18:00:00',	'2026-03-06 17:59:59',	0.00,	'Enable',	'2025-12-06 14:13:51',	'127.0.0.1',	NULL,	NULL,	1),
 (2,	1,	2,	'2025-12-05 18:00:00',	'2026-03-06 17:59:59',	0.00,	'Enable',	'2025-12-06 14:14:09',	'127.0.0.1',	NULL,	NULL,	1),

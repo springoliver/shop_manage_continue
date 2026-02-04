@@ -247,7 +247,7 @@
             var store_name = document.getElementById('store_name').value;
             if (!store_name) return;
             
-            fetch('{{ route('storeowner.store.check-name') }}', {
+            fetch('{{ route("storeowner.store.check-name") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -286,7 +286,7 @@
             var email = document.getElementById('store_email').value;
             if (!email) return;
             
-            fetch('{{ route('storeowner.store.check-email') }}', {
+            fetch('{{ route("storeowner.store.check-email") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

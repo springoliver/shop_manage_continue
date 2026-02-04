@@ -5,6 +5,7 @@ namespace App\Http\StoreOwner\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Module;
 use App\Models\PaidModule;
+use App\Models\PaymentCard;
 use App\Models\Store;
 use App\Models\UserGroup;
 use Illuminate\Http\RedirectResponse;
@@ -92,6 +93,11 @@ class ModuleSettingController extends Controller
             ->where('storeid', $storeid)
             ->orderBy('purchase_date', 'desc')
             ->get();
+
+        $paymentCards = PaymentCard::where('storeid', $storeid)
+            ->where('ownerid', $ownerid)
+            ->orderBy('insertdate', 'desc')
+            ->get();
         
         // Get all installed modules (latest by insertdatetime, grouped by moduleid)
         $allinstallModule = DB::select("
@@ -151,6 +157,7 @@ class ModuleSettingController extends Controller
             'availableModules',
             'renewalsDue',
             'billingItems',
+            'paymentCards',
             'allinstallModule',
             'diff',
             'storecount',
@@ -527,6 +534,59 @@ class ModuleSettingController extends Controller
             ->with('success', 'Auto renew updated.');
     }
 
+    public function storePaymentCard(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name_on_card' => ['required', 'string', 'max:255'],
+            'card_number' => ['required', 'string', 'min:12', 'max:25'],
+            'expiry_month' => ['required', 'integer', 'between:1,12'],
+            'expiry_year' => ['required', 'integer', 'min:2024', 'max:2099'],
+        ]);
+
+        $storeid = session('storeid', 0);
+        $ownerid = auth('storeowner')->user()->ownerid;
+        $cardNumber = preg_replace('/\D+/', '', $validated['card_number']);
+
+        if (strlen($cardNumber) < 12 || strlen($cardNumber) > 19) {
+            return back()->withInput()->withErrors([
+                'card_number' => 'Invalid card number.',
+            ]);
+        }
+
+        $last4 = substr($cardNumber, -4);
+        $brand = $this->detectCardBrand($cardNumber);
+
+        PaymentCard::create([
+            'storeid' => $storeid,
+            'ownerid' => $ownerid,
+            'name_on_card' => $validated['name_on_card'],
+            'card_last4' => $last4,
+            'card_brand' => $brand,
+            'expiry_month' => (int) $validated['expiry_month'],
+            'expiry_year' => (int) $validated['expiry_year'],
+            'status' => 'Active',
+            'insertdate' => now(),
+            'insertip' => $request->ip(),
+        ]);
+
+        return redirect()->route('storeowner.modulesetting.index', ['tab' => 'installed'])
+            ->with('success', 'Payment card added.');
+    }
+
+    public function paymentCards(): View
+    {
+        $user = auth('storeowner')->user();
+        $ownerid = $user->ownerid;
+        $storeid = session('storeid', 0);
+
+        $paymentCards = PaymentCard::where('storeid', $storeid)
+            ->where('ownerid', $ownerid)
+            ->orderBy('insertdate', 'desc')
+            ->get();
+
+        return view('storeowner.modulesetting.payment-cards', compact('paymentCards'));
+    }
+
     private function getActiveModuleIds(int $storeid): array
     {
         $curDate = Carbon::now();
@@ -577,5 +637,23 @@ class ModuleSettingController extends Controller
                 'billing_cycle' => $billingCycle,
             ]);
         }
+    }
+
+    private function detectCardBrand(string $cardNumber): string
+    {
+        if (str_starts_with($cardNumber, '4')) {
+            return 'Visa';
+        }
+        if (preg_match('/^5[1-5]/', $cardNumber)) {
+            return 'Mastercard';
+        }
+        if (preg_match('/^3[47]/', $cardNumber)) {
+            return 'Amex';
+        }
+        if (str_starts_with($cardNumber, '6')) {
+            return 'Discover';
+        }
+
+        return 'Card';
     }
 }

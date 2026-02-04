@@ -120,7 +120,7 @@
                                     <div class="text-sm text-gray-900">{{ $store->full_google_address }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <button type="button" onclick="openStatusModal({{ $store->storeid }}, '{{ $store->status }}')" 
+                                    <button type="button" onclick="openStatusModal('{{ $store->storeid }}', '{{ $store->status }}')" 
                                         class="px-2 py-1 text-xs font-semibold rounded-full {{ $store->status === 'Active' ? 'bg-green-100 text-green-800' : ($store->status === 'Closed' ? 'bg-yellow-100 text-yellow-800' : ($store->status === 'Pending Setup' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800')) }}">
                                         {{ $store->status }}
                                     </button>
