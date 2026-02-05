@@ -49,6 +49,7 @@ class PaidModule extends Model
         'isTrial',
         'auto_renew',
         'billing_cycle',
+        'payment_card_id',
     ];
 
     /**
@@ -65,6 +66,7 @@ class PaidModule extends Model
             'insertdatetime' => 'datetime',
             'isTrial' => 'boolean',
             'auto_renew' => 'boolean',
+            'payment_card_id' => 'integer',
         ];
     }
 

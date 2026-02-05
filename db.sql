@@ -9630,6 +9630,7 @@ CREATE TABLE `stoma_paid_module` (
   `isTrial` tinyint(1) NOT NULL DEFAULT '0',
   `auto_renew` tinyint(1) NOT NULL DEFAULT '0',
   `billing_cycle` enum('monthly','yearly') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'monthly',
+  `payment_card_id` int unsigned DEFAULT NULL,
   PRIMARY KEY (`pmid`),
   KEY `stoma_paid_module_moduleid_foreign` (`moduleid`),
   KEY `stoma_paid_module_storeid_moduleid_index` (`storeid`,`moduleid`),

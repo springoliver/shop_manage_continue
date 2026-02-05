@@ -26,6 +26,7 @@ return new class extends Migration
             $table->boolean('isTrial')->default(0);
             $table->boolean('auto_renew')->default(0);
             $table->enum('billing_cycle', ['monthly', 'yearly'])->default('monthly');
+            $table->unsignedInteger('payment_card_id')->nullable();
             
             $table->foreign('storeid')->references('storeid')->on('stoma_store')->onDelete('cascade');
             $table->foreign('moduleid')->references('moduleid')->on('stoma_module')->onDelete('cascade');

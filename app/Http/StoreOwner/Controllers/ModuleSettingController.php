@@ -11,6 +11,7 @@ use App\Models\UserGroup;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 use Illuminate\View\View;
 use Carbon\Carbon;
 
@@ -536,38 +537,7 @@ class ModuleSettingController extends Controller
 
     public function storePaymentCard(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name_on_card' => ['required', 'string', 'max:255'],
-            'card_number' => ['required', 'string', 'min:12', 'max:25'],
-            'expiry_month' => ['required', 'integer', 'between:1,12'],
-            'expiry_year' => ['required', 'integer', 'min:2024', 'max:2099'],
-        ]);
-
-        $storeid = session('storeid', 0);
-        $ownerid = auth('storeowner')->user()->ownerid;
-        $cardNumber = preg_replace('/\D+/', '', $validated['card_number']);
-
-        if (strlen($cardNumber) < 12 || strlen($cardNumber) > 19) {
-            return back()->withInput()->withErrors([
-                'card_number' => 'Invalid card number.',
-            ]);
-        }
-
-        $last4 = substr($cardNumber, -4);
-        $brand = $this->detectCardBrand($cardNumber);
-
-        PaymentCard::create([
-            'storeid' => $storeid,
-            'ownerid' => $ownerid,
-            'name_on_card' => $validated['name_on_card'],
-            'card_last4' => $last4,
-            'card_brand' => $brand,
-            'expiry_month' => (int) $validated['expiry_month'],
-            'expiry_year' => (int) $validated['expiry_year'],
-            'status' => 'Active',
-            'insertdate' => now(),
-            'insertip' => $request->ip(),
-        ]);
+        $this->createPaymentCard($request);
 
         return redirect()->route('storeowner.modulesetting.index', ['tab' => 'installed'])
             ->with('success', 'Payment card added.');
@@ -585,6 +555,50 @@ class ModuleSettingController extends Controller
             ->get();
 
         return view('storeowner.modulesetting.payment-cards', compact('paymentCards'));
+    }
+
+    public function storePaymentCardAddress(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'card_type' => ['required', 'string', 'max:50'],
+            'first_name' => ['required', 'string', 'max:100'],
+            'surname' => ['required', 'string', 'max:100'],
+            'company_name' => ['nullable', 'string', 'max:255'],
+            'house_number' => ['nullable', 'string', 'max:100'],
+            'street' => ['required', 'string', 'max:255'],
+            'area' => ['nullable', 'string', 'max:255'],
+            'town_city' => ['required', 'string', 'max:255'],
+            'county' => ['nullable', 'string', 'max:255'],
+            'postcode' => ['required', 'string', 'max:20'],
+        ]);
+
+        if ($request->filled('pmid')) {
+            Session::put('payment_card_pmid', (int) $request->input('pmid'));
+        }
+        Session::put('payment_card_address', $validated);
+
+        return redirect()->route('storeowner.modulesetting.payment-cards', ['modal' => 'details']);
+    }
+
+    public function storePaymentCardDetails(Request $request): RedirectResponse
+    {
+        if (! Session::has('payment_card_address')) {
+            return redirect()->route('storeowner.modulesetting.payment-cards', ['modal' => 'address'])
+                ->with('error', 'Please complete billing address first.');
+        }
+
+        $card = $this->createPaymentCard($request);
+        Session::forget('payment_card_address');
+
+        if (Session::has('payment_card_pmid')) {
+            $pmid = (int) Session::pull('payment_card_pmid');
+            PaidModule::where('pmid', $pmid)->update([
+                'payment_card_id' => $card->cardid,
+            ]);
+        }
+
+        return redirect()->route('storeowner.modulesetting.payment-cards')
+            ->with('success', 'Payment card added.');
     }
 
     private function getActiveModuleIds(int $storeid): array
@@ -655,5 +669,58 @@ class ModuleSettingController extends Controller
         }
 
         return 'Card';
+    }
+
+    private function createPaymentCard(Request $request): PaymentCard
+    {
+        $validated = $request->validate([
+            'name_on_card' => ['required', 'string', 'max:255'],
+            'card_number' => ['required', 'string', 'min:12', 'max:25'],
+            'expiry_month' => ['required', 'integer', 'between:1,12'],
+            'expiry_year' => ['required', 'integer', 'min:2024', 'max:2099'],
+        ]);
+
+        $storeid = session('storeid', 0);
+        $ownerid = auth('storeowner')->user()->ownerid;
+        $cardNumber = preg_replace('/\D+/', '', $validated['card_number']);
+
+        if (strlen($cardNumber) < 12 || strlen($cardNumber) > 19) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'card_number' => 'Invalid card number.',
+            ]);
+        }
+
+        $last4 = substr($cardNumber, -4);
+        $brand = $this->detectCardBrand($cardNumber);
+
+        $card = PaymentCard::create([
+            'storeid' => $storeid,
+            'ownerid' => $ownerid,
+            'name_on_card' => $validated['name_on_card'],
+            'card_last4' => $last4,
+            'card_brand' => $brand,
+            'expiry_month' => (int) $validated['expiry_month'],
+            'expiry_year' => (int) $validated['expiry_year'],
+            'status' => 'Active',
+            'insertdate' => now(),
+            'insertip' => $request->ip(),
+        ]);
+
+        return $card;
+    }
+
+    public function updatePaymentCard(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'pmid' => ['required', 'integer', 'exists:stoma_paid_module,pmid'],
+            'payment_card_id' => ['required', 'integer', 'exists:stoma_payment_card,cardid'],
+        ]);
+
+        PaidModule::where('pmid', $validated['pmid'])->update([
+            'payment_card_id' => $validated['payment_card_id'],
+        ]);
+
+        return redirect()->route('storeowner.modulesetting.index', ['tab' => 'installed'])
+            ->with('success', 'Payment method updated.');
     }
 }

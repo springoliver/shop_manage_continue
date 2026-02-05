@@ -204,15 +204,19 @@
                                     </td>
                                     <td class="px-4 py-3 text-gray-700">
                                         @if (!$isEmployeesModule)
-                                            <select class="border border-gray-300 rounded-md pl-2 pr-8 py-1 text-sm payment-card-select">
-                                                <option value="">Select card</option>
-                                                @foreach ($paymentCards as $card)
-                                                    <option value="{{ $card->cardid }}">
-                                                        {{ $card->card_brand ?? 'Card' }} **** {{ $card->card_last4 }} ({{ sprintf('%02d', $card->expiry_month) }}/{{ $card->expiry_year }})
-                                                    </option>
-                                                @endforeach
-                                                <option value="add_new">+ Add new card</option>
-                                            </select>
+                                            <form method="POST" action="{{ route('storeowner.modulesetting.payment-cards.select') }}" class="inline">
+                                                @csrf
+                                                <input type="hidden" name="pmid" value="{{ $pm->pmid }}">
+                                                <select name="payment_card_id" class="border border-gray-300 rounded-md pl-2 pr-8 py-1 text-sm payment-card-select" data-pmid="{{ $pm->pmid }}">
+                                                    <option value="">Select card</option>
+                                                    @foreach ($paymentCards as $card)
+                                                        <option value="{{ $card->cardid }}" {{ (int) $pm->payment_card_id === (int) $card->cardid ? 'selected' : '' }}>
+                                                            {{ $card->card_brand ?? 'Card' }} **** {{ $card->card_last4 }} ({{ sprintf('%02d', $card->expiry_month) }}/{{ $card->expiry_year }})
+                                                        </option>
+                                                    @endforeach
+                                                    <option value="add_new">+ Add new card</option>
+                                                </select>
+                                            </form>
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-gray-700">
@@ -480,9 +484,12 @@
         document.querySelectorAll('.payment-card-select').forEach(select => {
             select.addEventListener('change', function () {
                 if (this.value === 'add_new') {
-                    window.location.href = "{{ route('storeowner.modulesetting.payment-cards') }}";
+                    const pmid = this.dataset.pmid;
+                    window.location.href = "{{ route('storeowner.modulesetting.payment-cards') }}" + "?pmid=" + pmid + "&modal=address";
                     this.value = '';
+                    return;
                 }
+                this.closest('form')?.submit();
             });
         });
     </script>
