@@ -89,6 +89,11 @@ class ModuleSettingController extends Controller
             return $pm;
         })->values();
 
+        $renewalsDue = $renewalsDue->sortBy(function (PaidModule $pm) {
+            $name = strtolower($pm->module->module ?? '');
+            return $name === 'employee' ? 0 : 1;
+        })->values();
+
         // Billing history (all paid modules)
         $billingItems = PaidModule::with('module')
             ->where('storeid', $storeid)

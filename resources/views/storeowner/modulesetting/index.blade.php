@@ -270,7 +270,12 @@
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-800 text-white text-xs uppercase">
                             <tr>
+                                <th class="px-4 py-3 text-left">
+                                    <input type="checkbox" id="select-all-renewals" class="rounded border-gray-300">
+                                </th>
                                 <th class="px-4 py-3 text-left">Modules</th>
+                                <th class="px-4 py-3 text-left">Auto Renew</th>
+                                <th class="px-4 py-3 text-left">Payment Method</th>
                                 <th class="px-4 py-3 text-left">Renewal Term</th>
                                 <th class="px-4 py-3 text-left">Due Date</th>
                                 <th class="px-4 py-3 text-left">Expires</th>
@@ -279,37 +284,95 @@
                         </thead>
                         <tbody class="divide-y divide-gray-200">
                             @forelse ($renewalsDue as $pm)
+                                @php
+                                    $moduleName = strtolower($pm->module->module ?? '');
+                                    $isEmployeesModule = $moduleName === 'employee';
+                                    $renewalTerm = $isEmployeesModule
+                                        ? 'STANDARD / CORE MODULE'
+                                        : '1 yr for €' . number_format(($pm->paid_amount ?? 0), 0);
+                                    $daysRemaining = (int) ($pm->days_remaining ?? 0);
+                                @endphp
                                 <tr>
+                                    <td class="px-4 py-3">
+                                        <input type="checkbox" class="renewal-select rounded border-gray-300">
+                                    </td>
                                     <td class="px-4 py-3 font-medium text-gray-900">
                                         {{ $pm->module->module ?? 'Unknown' }}
                                     </td>
                                     <td class="px-4 py-3 text-gray-700">
-                                        {{ $pm->isTrial ? 'Freemium' : 'Standard / Core Module' }}
+                                        @if (!$isEmployeesModule)
+                                            <form method="POST" action="{{ route('storeowner.modulesetting.auto-renew') }}" class="inline auto-renew-form">
+                                                @csrf
+                                                <input type="hidden" name="pmid" value="{{ $pm->pmid }}">
+                                                <input type="hidden" name="auto_renew" value="{{ $pm->auto_renew ? 1 : 0 }}">
+                                                <label class="inline-flex items-center cursor-pointer">
+                                                    <input type="checkbox" class="sr-only auto-renew-toggle" {{ $pm->auto_renew ? 'checked' : '' }} />
+                                                    <span class="w-10 h-5 rounded-full relative transition auto-renew-track {{ $pm->auto_renew ? 'bg-green-500' : 'bg-gray-300' }}">
+                                                        <span class="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition auto-renew-thumb {{ $pm->auto_renew ? 'translate-x-5' : 'translate-x-0' }}"></span>
+                                                    </span>
+                                                    <span class="ml-2 text-xs font-semibold text-gray-600 auto-renew-label">{{ $pm->auto_renew ? 'ON' : 'OFF' }}</span>
+                                                </label>
+                                            </form>
+                                        @endif
                                     </td>
                                     <td class="px-4 py-3 text-gray-700">
-                                        {{ $pm->expire_date?->format('m/d/Y') ?? '-' }}
+                                        @if (!$isEmployeesModule)
+                                            <form method="POST" action="{{ route('storeowner.modulesetting.payment-cards.select') }}" class="inline">
+                                                @csrf
+                                                <input type="hidden" name="pmid" value="{{ $pm->pmid }}">
+                                                <select name="payment_card_id" class="border border-gray-300 rounded-md pl-2 pr-8 py-1 text-sm payment-card-select" data-pmid="{{ $pm->pmid }}">
+                                                    <option value="">Select card</option>
+                                                    @foreach ($paymentCards as $card)
+                                                        <option value="{{ $card->cardid }}" {{ (int) $pm->payment_card_id === (int) $card->cardid ? 'selected' : '' }}>
+                                                            {{ $card->card_brand ?? 'Card' }} **** {{ $card->card_last4 }} ({{ sprintf('%02d', $card->expiry_month) }}/{{ $card->expiry_year }})
+                                                        </option>
+                                                    @endforeach
+                                                    <option value="add_new">+ Add new card</option>
+                                                </select>
+                                            </form>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-700">
+                                        {{ $renewalTerm }}
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-700">
+                                        {{ $isEmployeesModule ? '-' : ($pm->expire_date?->format('m/d/Y') ?? '-') }}
                                     </td>
                                     <td class="px-4 py-3">
-                                        @if ($pm->days_remaining < 0)
+                                        @if ($isEmployeesModule)
+                                            -
+                                        @elseif ($daysRemaining < 0)
                                             <span class="text-red-600">Expired</span>
-                                        @elseif ($pm->days_remaining <= 30)
-                                            <span class="text-red-600">{{ $pm->days_remaining }} days</span>
+                                        @elseif ($daysRemaining <= 30)
+                                            <span class="text-red-600">{{ $daysRemaining }} days</span>
                                         @else
-                                            <span class="text-gray-700">{{ $pm->days_remaining }} days</span>
+                                            <span class="text-gray-700">{{ $daysRemaining }} days</span>
                                         @endif
                                     </td>
                                     <td class="px-4 py-3">
-                                        <button class="px-3 py-1 bg-gray-200 text-gray-700 rounded">Renew</button>
+                                        @if ($isEmployeesModule)
+                                            <span class="px-3 py-1 rounded text-xs font-semibold bg-green-500 text-white">Freemium</span>
+                                        @else
+                                            <button class="px-3 py-1 bg-gray-200 text-gray-700 rounded">Renew</button>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="px-4 py-6 text-center text-gray-500">No renewals due.</td>
+                                    <td colspan="8" class="px-4 py-6 text-center text-gray-500">No renewals due.</td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
+
+                @if ($renewalsDue->isNotEmpty())
+                    <div class="mt-4">
+                        <button type="button" class="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800">
+                            Renew all selected Modules
+                        </button>
+                    </div>
+                @endif
             </div>
 
             <!-- Billing -->
@@ -428,6 +491,12 @@
 
         document.getElementById('select-all-installed')?.addEventListener('change', function () {
             document.querySelectorAll('.installed-select').forEach(cb => {
+                cb.checked = this.checked;
+            });
+        });
+
+        document.getElementById('select-all-renewals')?.addEventListener('change', function () {
+            document.querySelectorAll('.renewal-select').forEach(cb => {
                 cb.checked = this.checked;
             });
         });
