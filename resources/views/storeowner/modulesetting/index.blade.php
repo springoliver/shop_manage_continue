@@ -385,19 +385,55 @@
                                 <th class="px-4 py-3 text-left">Description</th>
                                 <th class="px-4 py-3 text-left">Date</th>
                                 <th class="px-4 py-3 text-left">Amount</th>
+                                <th class="px-4 py-3 text-left">View Invoice</th>
+                                <th class="px-4 py-3 text-left">Credit Note</th>
                             </tr>
                         </thead>
+                        <tbody class="bg-white">
+                            <tr class="border-b border-gray-200">
+                                <td class="px-2 py-2">
+                                    <input type="text" id="billing-filter-order" class="w-full border border-gray-300 rounded px-2 py-1 text-sm" placeholder="OrderRef">
+                                </td>
+                                <td class="px-2 py-2">
+                                    <input type="text" id="billing-filter-desc" class="w-full border border-gray-300 rounded px-2 py-1 text-sm" placeholder="Description">
+                                </td>
+                                <td class="px-2 py-2">
+                                    <select id="billing-filter-year" class="w-full border border-gray-300 rounded px-2 py-1 text-sm">
+                                        <option value="">All</option>
+                                        @for ($y = date('Y'); $y >= date('Y') - 5; $y--)
+                                            <option value="{{ $y }}">{{ $y }}</option>
+                                        @endfor
+                                    </select>
+                                </td>
+                                <td class="px-2 py-2"></td>
+                                <td class="px-2 py-2"></td>
+                                <td class="px-2 py-2"></td>
+                            </tr>
+                        </tbody>
                         <tbody class="divide-y divide-gray-200">
                             @forelse ($billingItems as $pm)
                                 <tr>
                                     <td class="px-4 py-3 text-gray-700">{{ $pm->transactionid ?? $pm->pmid }}</td>
-                                    <td class="px-4 py-3 text-gray-700">{{ $pm->module->module ?? 'Module' }} module</td>
+                                    <td class="px-4 py-3 text-gray-700">
+                                        {{ $pm->module->module ?? 'Module' }}
+                                        @if ($pm->isTrial)
+                                            module installment
+                                        @else
+                                            module renewal
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-3 text-gray-700">{{ $pm->purchase_date?->format('m/d/Y') ?? '-' }}</td>
                                     <td class="px-4 py-3 text-gray-700">€{{ number_format($pm->paid_amount ?? 0, 2) }}</td>
+                                    <td class="px-4 py-3 text-gray-700">
+                                        <a href="{{ route('storeowner.modulesetting.invoice', ['pmid' => $pm->pmid]) }}" title="Download PDF" class="text-blue-600 hover:text-blue-800">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </a>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-700">-</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="px-4 py-6 text-center text-gray-500">No billing history.</td>
+                                    <td colspan="6" class="px-4 py-6 text-center text-gray-500">No billing history.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -561,5 +597,28 @@
                 this.closest('form')?.submit();
             });
         });
+
+        const orderFilter = document.getElementById('billing-filter-order');
+        const descFilter = document.getElementById('billing-filter-desc');
+        const yearFilter = document.getElementById('billing-filter-year');
+
+        function filterBillingRows() {
+            const orderVal = orderFilter?.value.toLowerCase() ?? '';
+            const descVal = descFilter?.value.toLowerCase() ?? '';
+            const yearVal = yearFilter?.value ?? '';
+            document.querySelectorAll('#tab-billing tbody.divide-y tr').forEach(row => {
+                const orderText = row.children[0]?.textContent?.toLowerCase() ?? '';
+                const descText = row.children[1]?.textContent?.toLowerCase() ?? '';
+                const dateText = row.children[2]?.textContent ?? '';
+                const matchesOrder = !orderVal || orderText.includes(orderVal);
+                const matchesDesc = !descVal || descText.includes(descVal);
+                const matchesYear = !yearVal || dateText.includes(yearVal);
+                row.style.display = matchesOrder && matchesDesc && matchesYear ? '' : 'none';
+            });
+        }
+
+        orderFilter?.addEventListener('input', filterBillingRows);
+        descFilter?.addEventListener('input', filterBillingRows);
+        yearFilter?.addEventListener('change', filterBillingRows);
     </script>
 </x-storeowner-app-layout>

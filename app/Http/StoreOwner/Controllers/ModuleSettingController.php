@@ -8,6 +8,7 @@ use App\Models\PaidModule;
 use App\Models\PaymentCard;
 use App\Models\Store;
 use App\Models\UserGroup;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -169,6 +170,35 @@ class ModuleSettingController extends Controller
             'storecount',
             'cartModule'
         ));
+    }
+
+    /**
+     * Download billing invoice PDF for a paid module.
+     */
+    public function downloadInvoice(int $pmid)
+    {
+        $user = auth('storeowner')->user();
+        $storeid = session('storeid', 0);
+
+        $paidModule = PaidModule::with('module')
+            ->where('pmid', $pmid)
+            ->where('storeid', $storeid)
+            ->firstOrFail();
+
+        $store = Store::with('storeOwner')->find($storeid);
+        $owner = $store?->storeOwner ?? $user;
+
+        $invoiceNumber = $paidModule->transactionid ?: ('INV-' . $paidModule->pmid);
+        $filename = 'invoice-' . $invoiceNumber . '.pdf';
+
+        $pdf = Pdf::loadView('storeowner.modulesetting.invoice-pdf', [
+            'paidModule' => $paidModule,
+            'store' => $store,
+            'owner' => $owner,
+            'invoiceNumber' => $invoiceNumber,
+        ]);
+
+        return $pdf->download($filename);
     }
 
     /**
