@@ -202,6 +202,61 @@ class ModuleSettingController extends Controller
     }
 
     /**
+     * Show the cart review & checkout page.
+     */
+    public function checkout(): View
+    {
+        $user = auth('storeowner')->user();
+        $storeid = session('storeid', 0);
+
+        $curDate = Carbon::now();
+        $latestPaidModules = PaidModule::with('module')
+            ->where('storeid', $storeid)
+            ->orderBy('insertdatetime', 'desc')
+            ->get()
+            ->groupBy('moduleid')
+            ->map->first()
+            ->values();
+
+        $installedModules = $latestPaidModules->filter(function (PaidModule $pm) use ($curDate) {
+            if (! $pm->purchase_date || ! $pm->expire_date) {
+                return false;
+            }
+
+            return $pm->purchase_date->startOfDay() <= $curDate
+                && $pm->expire_date->endOfDay() >= $curDate;
+        })->values();
+
+        $installedModuleIds = $installedModules->pluck('moduleid')->all();
+
+        $availableModules = Module::where('status', 'Enable')
+            ->whereNotIn('moduleid', $installedModuleIds)
+            ->get();
+
+        $summaryItems = $availableModules->map(function (Module $module) {
+            return (object) [
+                'module' => $module->module ?? 'Module',
+                'cycle' => 'monthly',
+                'amount' => (float) ($module->price_1months ?? 0),
+            ];
+        });
+
+        $subtotal = $summaryItems->sum('amount');
+        $vatRate = 0.23;
+        $vatAmount = $subtotal * $vatRate;
+        $total = $subtotal + $vatAmount;
+
+        return view('storeowner.modulesetting.checkout', compact(
+            'availableModules',
+            'summaryItems',
+            'subtotal',
+            'vatRate',
+            'vatAmount',
+            'total'
+        ));
+    }
+
+    /**
      * View module access for a user group (AJAX).
      */
     public function view(Request $request)

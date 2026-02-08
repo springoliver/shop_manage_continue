@@ -351,7 +351,7 @@
                                     </td>
                                     <td class="px-4 py-3">
                                         @if ($isEmployeesModule)
-                                            <span class="px-3 py-1 rounded text-xs font-semibold bg-green-500 text-white">Freemium</span>
+                                            <span class="px-3 py-1 rounded font-semibold bg-green-500 text-white">Freemium</span>
                                         @else
                                             <button class="px-3 py-1 bg-gray-200 text-gray-700 rounded">Renew</button>
                                         @endif

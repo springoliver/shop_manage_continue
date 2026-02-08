@@ -111,6 +111,29 @@
                         @endif
                     </x-slot>
                 </x-dropdown>
+
+                @if($storeowner)
+                    @php
+                        $cartCount = 0;
+                        try {
+                            $cartCount = \Illuminate\Support\Facades\DB::table('stoma_cart')
+                                ->where('store_id', session('storeid', 0))
+                                ->where('owner_id', $storeowner->ownerid)
+                                ->count();
+                        } catch (\Exception $e) {
+                            $cartCount = 0;
+                        }
+                    @endphp
+                    <a href="{{ route('storeowner.modulesetting.checkout') }}" class="relative inline-flex items-center mr-4 text-gray-600 hover:text-gray-800" title="Cart">
+                        <i class="fas fa-shopping-cart text-lg"></i>
+                        @if($cartCount > 0)
+                            <span class="absolute -top-2 -right-2 inline-flex items-center justify-center text-xs bg-green-600 text-white rounded-full h-5 w-5">
+                                {{ $cartCount }}
+                            </span>
+                        @endif
+                    </a>
+                @endif
+                
             </div>
             </x-header>
 
