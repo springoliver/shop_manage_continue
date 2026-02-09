@@ -130,6 +130,7 @@ Route::name('storeowner.')->group(function () {
         Route::post('modulesetting/auto-renew', [StoreOwnerModuleSettingController::class, 'updateAutoRenew'])->name('modulesetting.auto-renew');
         Route::get('modulesetting/billing/{pmid}/invoice', [StoreOwnerModuleSettingController::class, 'downloadInvoice'])->name('modulesetting.invoice');
         Route::get('modulesetting/checkout', [StoreOwnerModuleSettingController::class, 'checkout'])->name('modulesetting.checkout');
+        Route::get('modulesetting/checkout/payment', [StoreOwnerModuleSettingController::class, 'checkoutPayment'])->name('modulesetting.checkout.payment');
         Route::post('modulesetting/payment-cards', [StoreOwnerModuleSettingController::class, 'storePaymentCard'])->name('modulesetting.payment-cards.store');
         Route::get('modulesetting/payment-cards', [StoreOwnerModuleSettingController::class, 'paymentCards'])->name('modulesetting.payment-cards');
         Route::post('modulesetting/payment-cards/address', [StoreOwnerModuleSettingController::class, 'storePaymentCardAddress'])->name('modulesetting.payment-cards.address.store');

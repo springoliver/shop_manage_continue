@@ -90,9 +90,9 @@
                         <div id="summary-total">€0.00</div>
                     </div>
 
-                    <button class="mt-4 w-full bg-white text-green-700 font-semibold py-2 rounded-md">
+                    <a href="{{ route('storeowner.modulesetting.checkout.payment') }}" class="mt-4 w-full bg-white text-green-700 font-semibold py-2 rounded-md text-center block">
                         Checkout
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>
