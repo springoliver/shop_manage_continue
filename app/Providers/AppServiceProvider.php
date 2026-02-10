@@ -22,6 +22,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Allow remember/session cookies on HTTP when the site is not HTTPS.
+        if (! request()->isSecure()) {
+            config(['session.secure' => false]);
+        }
+
         // Override password broker manager by setting instance directly
         // This ensures our custom manager overrides the framework default
         $manager = new CustomPasswordBrokerManager($this->app);

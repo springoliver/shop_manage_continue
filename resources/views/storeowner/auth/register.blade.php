@@ -417,7 +417,32 @@ MaxiManage.com will use your personal data to create an account with us and to s
                 }
             }
 
-            function setAddressFields(address, lat, lng, displayName) {
+            function setAddressFieldsFromPlace(place) {
+                if (!place || !place.address_components) {
+                    return;
+                }
+
+                const components = {};
+                place.address_components.forEach((component) => {
+                    const type = component.types[0];
+                    components[type] = component.long_name;
+                });
+
+                if (fields.state) fields.state.value = components.administrative_area_level_1 || '';
+                if (fields.city) fields.city.value = components.locality || components.postal_town || '';
+                if (fields.zip) fields.zip.value = components.postal_code || '';
+                if (fields.formatted) fields.formatted.value = place.formatted_address || place.name || '';
+                if (fields.lat) fields.lat.value = place.geometry?.location?.lat() ?? '';
+                if (fields.lng) fields.lng.value = place.geometry?.location?.lng() ?? '';
+
+                if (addressInput && place.formatted_address) {
+                    addressInput.value = place.formatted_address;
+                }
+
+                setCountryOption(components.country);
+            }
+
+            function setAddressFieldsFromReverse(address, lat, lng, displayName) {
                 if (fields.lat) fields.lat.value = lat ?? '';
                 if (fields.lng) fields.lng.value = lng ?? '';
                 if (fields.formatted) fields.formatted.value = displayName ?? '';
@@ -438,9 +463,46 @@ MaxiManage.com will use your personal data to create an account with us and to s
                         if (!data || !data.address) {
                             return;
                         }
-                        setAddressFields(data.address, lat, lng, data.display_name);
+                        setAddressFieldsFromReverse(data.address, lat, lng, data.display_name);
                     })
                     .catch(() => {});
+            }
+
+            function initializeAutocomplete() {
+                if (!addressInput || typeof google === 'undefined' || !google.maps || !google.maps.places) {
+                    return;
+                }
+                const autocomplete = new google.maps.places.Autocomplete(addressInput, {
+                    types: ['geocode', 'establishment'],
+                });
+
+                autocomplete.addListener('place_changed', function () {
+                    const place = autocomplete.getPlace();
+                    if (!place || !place.geometry) {
+                        return;
+                    }
+                    setAddressFieldsFromPlace(place);
+                });
+            }
+
+            function initGooglePlacesAutocomplete() {
+                if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+                    const script = document.createElement('script');
+                    const apiKey = "{{ config('services.google.maps_key') }}";
+                    if (!apiKey) {
+                        console.warn('GOOGLE_MAPS_KEY is not set.');
+                        return;
+                    }
+                    script.src = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&libraries=places&callback=initAutocomplete';
+                    script.async = true;
+                    script.defer = true;
+                    document.head.appendChild(script);
+                    window.initAutocomplete = function () {
+                        initializeAutocomplete();
+                    };
+                } else {
+                    initializeAutocomplete();
+                }
             }
 
             if (navigator.geolocation) {
@@ -454,6 +516,8 @@ MaxiManage.com will use your personal data to create an account with us and to s
                     { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
                 );
             }
+
+            initGooglePlacesAutocomplete();
         })();
     </script>
 </x-guest-layout>
