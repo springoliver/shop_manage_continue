@@ -80,10 +80,10 @@ class MenuService
         }
 
          
-        // Time of request - shown if Time Off Request module is installed (always visible, no level check)
-        if (isset($allInstalledModulesMap['My Time Off Request'])) {
+        // My Time Off Request - shown if Time Off Request module is installed (always visible, no level check)
+        if (isset($allInstalledModulesMap['Time Off Request'])) {
             $menu[] = [
-                'label' => 'Time of request',
+                'label' => 'My Time Off Request',
                 'route' => 'employee.holidayrequest.index',
                 'enabled' => Route::has('employee.holidayrequest.index'),
                 'icon' => '<i class="fa fa-plane"></i>',
