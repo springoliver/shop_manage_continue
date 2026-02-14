@@ -21,14 +21,10 @@ class DepartmentController extends Controller
         $user = auth('storeowner')->user();
         $storeid = session('storeid', $user->stores->first()->storeid ?? 0);
         
-        // Get departments for current store OR global (storeid = 0)
-        // Similar to CI's get_all_department method
+        // Get departments only for current store
         $query = DB::table('stoma_store_department as d')
             ->leftJoin('stoma_storetype as st', 'st.typeid', '=', 'd.storetypeid')
-            ->where(function($q) use ($storeid) {
-                $q->where('d.storeid', $storeid)
-                  ->orWhere('d.storeid', 0);
-            });
+            ->where('d.storeid', $storeid);
         
         $query->select('d.*', 'st.typeid', 'st.store_type')
             ->orderBy('d.departmentid', 'DESC');
