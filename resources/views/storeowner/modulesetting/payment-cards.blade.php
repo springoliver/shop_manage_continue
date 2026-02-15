@@ -142,6 +142,7 @@
         </div>
     </div>
 
+    <div id="billing-address-data" data-address='@json(session('payment_card_address', []))'></div>
     <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden" id="card-details-modal" onclick="if(event.target === this) closeCardDetailsModal()">
         <div class="flex items-center justify-center min-h-screen p-4">
             <div class="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-3xl" onclick="event.stopPropagation()">
@@ -151,42 +152,30 @@
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <form method="POST" action="{{ route('storeowner.modulesetting.payment-cards.details.store') }}">
+                <form method="POST" action="{{ route('storeowner.modulesetting.payment-cards.details.store') }}" id="stripe-card-form">
                     @csrf
+                    <input type="hidden" name="payment_method_id" id="payment_method_id">
                     <div class="grid grid-cols-1 gap-4">
                         <div>
                             <label class="block text-sm text-gray-600 mb-1">Card No. *</label>
-                            <input type="text" name="card_number" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                            <div id="card-number-element" class="w-full border border-gray-300 rounded-md px-3 py-2 bg-white"></div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm text-gray-600 mb-1">Expiration Month *</label>
-                                <select name="expiry_month" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
-                                    <option value="">Month</option>
-                                    @for ($m = 1; $m <= 12; $m++)
-                                        <option value="{{ $m }}">{{ sprintf('%02d', $m) }}</option>
-                                    @endfor
-                                </select>
+                                <label class="block text-sm text-gray-600 mb-1">Expiration *</label>
+                                <div id="card-expiry-element" class="w-full border border-gray-300 rounded-md px-3 py-2 bg-white"></div>
                             </div>
                             <div>
-                                <label class="block text-sm text-gray-600 mb-1">Expiration Year *</label>
-                                <select name="expiry_year" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
-                                    <option value="">Year</option>
-                                    @for ($y = date('Y'); $y <= date('Y') + 10; $y++)
-                                        <option value="{{ $y }}">{{ $y }}</option>
-                                    @endfor
-                                </select>
+                                <label class="block text-sm text-gray-600 mb-1">CVC *</label>
+                                <div id="card-cvc-element" class="w-full border border-gray-300 rounded-md px-3 py-2 bg-white"></div>
                             </div>
-                        </div>
-                        <div>
-                            <label class="block text-sm text-gray-600 mb-1">Security code</label>
-                            <input type="text" name="security_code" class="w-full border border-gray-300 rounded-md px-3 py-2">
                         </div>
                         <div>
                             <label class="block text-sm text-gray-600 mb-1">Name (as on card) *</label>
                             <input type="text" name="name_on_card" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
                         </div>
                     </div>
+                    <div class="mt-2 text-sm text-red-600 hidden" id="card-errors"></div>
                     <div class="mt-6 flex items-center justify-center">
                         <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-md">Continue</button>
                     </div>
@@ -195,6 +184,7 @@
         </div>
     </div>
 
+    <script src="https://js.stripe.com/v3/"></script>
     <script>
         function openBillingAddressModal() {
             document.getElementById('billing-address-modal')?.classList.remove('hidden');
@@ -209,6 +199,9 @@
         function openCardDetailsModal() {
             document.getElementById('card-details-modal')?.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+                ensureStripeElements();
+            }, 50);
         }
 
         function closeCardDetailsModal() {
@@ -222,6 +215,92 @@
         }
         if (modalParam === 'details') {
             openCardDetailsModal();
+        }
+
+        const stripeKey = "{{ config('services.stripe.key') }}";
+        const stripe = stripeKey ? Stripe(stripeKey) : null;
+        const elements = stripe ? stripe.elements() : null;
+        const elementStyle = {
+            base: {
+                fontSize: '14px',
+                color: '#111827',
+                '::placeholder': { color: '#9CA3AF' },
+            },
+        };
+        const cardNumberElement = elements ? elements.create('cardNumber', { style: elementStyle }) : null;
+        const cardExpiryElement = elements ? elements.create('cardExpiry', { style: elementStyle }) : null;
+        const cardCvcElement = elements ? elements.create('cardCvc', { style: elementStyle }) : null;
+        let stripeElementsMounted = false;
+
+        const cardForm = document.getElementById('stripe-card-form');
+        const cardErrors = document.getElementById('card-errors');
+        const paymentMethodInput = document.getElementById('payment_method_id');
+        const billingAddressElement = document.getElementById('billing-address-data');
+        const billingAddress = billingAddressElement?.dataset.address
+            ? JSON.parse(billingAddressElement.dataset.address)
+            : {};
+
+        function ensureStripeElements() {
+            if (!stripe || !cardNumberElement) {
+                if (cardErrors) {
+                    cardErrors.textContent = 'Stripe is not configured. Please contact support.';
+                    cardErrors.classList.remove('hidden');
+                }
+                return;
+            }
+            if (stripeElementsMounted) {
+                return;
+            }
+            cardNumberElement.mount('#card-number-element');
+            cardExpiryElement.mount('#card-expiry-element');
+            cardCvcElement.mount('#card-cvc-element');
+            stripeElementsMounted = true;
+        }
+
+        if (modalParam === 'details') {
+            ensureStripeElements();
+        }
+
+        if (cardForm) {
+            cardForm.addEventListener('submit', async function (event) {
+                event.preventDefault();
+
+                cardErrors?.classList.add('hidden');
+                cardErrors.textContent = '';
+
+                if (!stripe || !cardNumberElement) {
+                    cardErrors.textContent = 'Stripe is not configured. Please contact support.';
+                    cardErrors.classList.remove('hidden');
+                    return;
+                }
+
+                const nameOnCard = cardForm.querySelector('input[name="name_on_card"]')?.value || '';
+                const fullName = nameOnCard || `${billingAddress.first_name || ''} ${billingAddress.surname || ''}`.trim();
+
+                const { paymentMethod, error } = await stripe.createPaymentMethod({
+                    type: 'card',
+                    card: cardNumberElement,
+                    billing_details: {
+                        name: fullName,
+                        address: {
+                            line1: `${billingAddress.house_number || ''} ${billingAddress.street || ''}`.trim() || undefined,
+                            line2: billingAddress.area || undefined,
+                            city: billingAddress.town_city || undefined,
+                            state: billingAddress.county || undefined,
+                            postal_code: billingAddress.postcode || undefined,
+                        },
+                    },
+                });
+
+                if (error) {
+                    cardErrors.textContent = error.message || 'Card validation failed.';
+                    cardErrors.classList.remove('hidden');
+                    return;
+                }
+
+                paymentMethodInput.value = paymentMethod.id;
+                cardForm.submit();
+            });
         }
     </script>
 </x-storeowner-app-layout>

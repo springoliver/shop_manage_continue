@@ -12,6 +12,7 @@
         "laravel/tinker": "^2.10.1",
         "mpdf/mpdf": "^8.2",
         "phpmailer/phpmailer": "^7.0",
+        "stripe/stripe-php": "^13.8",
         "spatie/laravel-permission": "^6.7"
     },
     "require-dev": {

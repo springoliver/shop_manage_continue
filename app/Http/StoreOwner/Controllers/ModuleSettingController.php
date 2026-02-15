@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use Illuminate\View\View;
 use Carbon\Carbon;
+use Stripe\StripeClient;
 
 class ModuleSettingController extends Controller
 {
@@ -691,7 +692,13 @@ class ModuleSettingController extends Controller
 
     public function storePaymentCard(Request $request): RedirectResponse
     {
-        $this->createPaymentCard($request);
+        if (! Session::has('payment_card_address')) {
+            return redirect()->route('storeowner.modulesetting.payment-cards', ['modal' => 'address'])
+                ->with('error', 'Please complete billing address first.');
+        }
+
+        $this->createStripePaymentCard($request, Session::get('payment_card_address', []));
+        Session::forget('payment_card_address');
 
         return redirect()->route('storeowner.modulesetting.index', ['tab' => 'installed'])
             ->with('success', 'Payment card added.');
@@ -741,7 +748,7 @@ class ModuleSettingController extends Controller
                 ->with('error', 'Please complete billing address first.');
         }
 
-        $card = $this->createPaymentCard($request);
+        $card = $this->createStripePaymentCard($request, Session::get('payment_card_address', []));
         Session::forget('payment_card_address');
 
         if (Session::has('payment_card_pmid')) {
@@ -807,45 +814,73 @@ class ModuleSettingController extends Controller
         }
     }
 
-    private function detectCardBrand(string $cardNumber): string
-    {
-        if (str_starts_with($cardNumber, '4')) {
-            return 'Visa';
-        }
-        if (preg_match('/^5[1-5]/', $cardNumber)) {
-            return 'Mastercard';
-        }
-        if (preg_match('/^3[47]/', $cardNumber)) {
-            return 'Amex';
-        }
-        if (str_starts_with($cardNumber, '6')) {
-            return 'Discover';
-        }
-
-        return 'Card';
-    }
-
-    private function createPaymentCard(Request $request): PaymentCard
+    private function createStripePaymentCard(Request $request, array $billingAddress): PaymentCard
     {
         $validated = $request->validate([
             'name_on_card' => ['required', 'string', 'max:255'],
-            'card_number' => ['required', 'string', 'min:12', 'max:25'],
-            'expiry_month' => ['required', 'integer', 'between:1,12'],
-            'expiry_year' => ['required', 'integer', 'min:2024', 'max:2099'],
+            'payment_method_id' => ['required', 'string', 'max:255'],
         ]);
 
         $storeid = session('storeid', 0);
-        $ownerid = auth('storeowner')->user()->ownerid;
-        $cardNumber = preg_replace('/\D+/', '', $validated['card_number']);
+        $user = auth('storeowner')->user();
+        $ownerid = $user->ownerid;
+        $stripeSecret = config('services.stripe.secret');
 
-        if (strlen($cardNumber) < 12 || strlen($cardNumber) > 19) {
+        if (! $stripeSecret) {
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'card_number' => 'Invalid card number.',
+                'payment_method_id' => 'Stripe is not configured.',
             ]);
         }
 
-        $last4 = substr($cardNumber, -4);
-        $brand = $this->detectCardBrand($cardNumber);
+        $stripe = new StripeClient($stripeSecret);
+        $paymentMethodId = $validated['payment_method_id'];
+
+        $customerId = PaymentCard::where('ownerid', $ownerid)
+            ->whereNotNull('stripe_customer_id')
+            ->value('stripe_customer_id');
+
+        if (! $customerId) {
+            $customer = $stripe->customers->create([
+                'name' => trim(($billingAddress['first_name'] ?? '') . ' ' . ($billingAddress['surname'] ?? '')) ?: $validated['name_on_card'],
+                'email' => $user->emailid ?? null,
+                'address' => [
+                    'line1' => trim(($billingAddress['house_number'] ?? '') . ' ' . ($billingAddress['street'] ?? '')),
+                    'line2' => $billingAddress['area'] ?? null,
+                    'city' => $billingAddress['town_city'] ?? null,
+                    'state' => $billingAddress['county'] ?? null,
+                    'postal_code' => $billingAddress['postcode'] ?? null,
+                ],
+            ]);
+            $customerId = $customer->id;
+        }
+
+        try {
+            $stripe->paymentMethods->attach($paymentMethodId, [
+                'customer' => $customerId,
+            ]);
+        } catch (\Stripe\Exception\InvalidRequestException $e) {
+            if ($e->getStripeCode() !== 'resource_already_attached') {
+                throw $e;
+            }
+        }
+
+        $stripe->customers->update($customerId, [
+            'invoice_settings' => [
+                'default_payment_method' => $paymentMethodId,
+            ],
+        ]);
+
+        $paymentMethod = $stripe->paymentMethods->retrieve($paymentMethodId);
+        $cardDetails = $paymentMethod->card ?? null;
+
+        if (! $cardDetails) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'payment_method_id' => 'Invalid payment method.',
+            ]);
+        }
+
+        $brand = ucfirst((string) $cardDetails->brand);
+        $last4 = (string) $cardDetails->last4;
 
         $card = PaymentCard::create([
             'storeid' => $storeid,
@@ -853,8 +888,10 @@ class ModuleSettingController extends Controller
             'name_on_card' => $validated['name_on_card'],
             'card_last4' => $last4,
             'card_brand' => $brand,
-            'expiry_month' => (int) $validated['expiry_month'],
-            'expiry_year' => (int) $validated['expiry_year'],
+            'expiry_month' => (int) $cardDetails->exp_month,
+            'expiry_year' => (int) $cardDetails->exp_year,
+            'stripe_payment_method_id' => $paymentMethodId,
+            'stripe_customer_id' => $customerId,
             'status' => 'Active',
             'insertdate' => now(),
             'insertip' => $request->ip(),

@@ -19,6 +19,8 @@ class PaymentCard extends Model
         'name_on_card',
         'card_last4',
         'card_brand',
+        'stripe_payment_method_id',
+        'stripe_customer_id',
         'expiry_month',
         'expiry_year',
         'status',

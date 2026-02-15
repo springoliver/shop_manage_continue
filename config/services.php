@@ -42,5 +42,9 @@ return [
     'google' => [
         'maps_key' => env('GOOGLE_MAPS_KEY'),
     ],
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+    ],
 
 ];
