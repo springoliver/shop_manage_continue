@@ -33,7 +33,11 @@
                     @forelse ($availableModules as $module)
                         <div class="module-row grid grid-cols-[260px_1fr_1fr] items-center gap-6 py-3 border-b border-gray-100">
                             <div class="flex items-center space-x-3">
-                                <input type="checkbox" class="module-check rounded border-gray-300" data-module="{{ $module->module ?? 'Module' }}" checked>
+                                <input type="checkbox"
+                                       class="module-check rounded border-gray-300"
+                                       data-module-id="{{ $module->moduleid }}"
+                                       data-module="{{ $module->module ?? 'Module' }}"
+                                       checked>
                                 <div class="font-semibold text-gray-800 uppercase">{{ $module->module ?? 'Module' }}</div>
                             </div>
                             <div class="text-sm text-gray-700">
@@ -105,6 +109,40 @@
             const summarySubtotal = document.getElementById('summary-subtotal');
             const summaryVat = document.getElementById('summary-vat');
             const summaryTotal = document.getElementById('summary-total');
+            const params = new URLSearchParams(window.location.search);
+
+            function applyQuerySelection() {
+                const modulesParam = params.get('modules');
+                const plansParam = params.get('plans');
+                const allowedModules = modulesParam
+                    ? new Set(modulesParam.split(',').filter(Boolean))
+                    : null;
+                const planMap = new Map();
+
+                if (plansParam) {
+                    plansParam.split(',').forEach(pair => {
+                        const [id, cycle] = pair.split(':');
+                        if (id && cycle) {
+                            planMap.set(id, cycle);
+                        }
+                    });
+                }
+
+                document.querySelectorAll('.module-check').forEach(check => {
+                    const moduleId = check.dataset.moduleId;
+                    if (allowedModules) {
+                        check.checked = allowedModules.has(moduleId);
+                    }
+                    const row = check.closest('.module-row');
+                    const cycle = planMap.get(moduleId);
+                    if (cycle && row) {
+                        const target = row.querySelector(`.module-plan[value="${cycle}"]`);
+                        if (target) {
+                            target.checked = true;
+                        }
+                    }
+                });
+            }
 
             function recalcSummary() {
                 const rows = [];
@@ -180,6 +218,7 @@
                 });
             });
 
+            applyQuerySelection();
             updateSavingsLabels();
             recalcSummary();
         </script>

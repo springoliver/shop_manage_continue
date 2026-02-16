@@ -76,8 +76,7 @@
         <div class="p-6">
             <!-- Not Installed -->
             <div id="tab-not-installed" class="module-tab-panel">
-                <form method="POST" action="{{ route('storeowner.modulesetting.install-selected') }}" id="install-selected-form">
-                    @csrf
+                <form id="install-selected-form">
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-800 text-white text-xs uppercase">
@@ -124,15 +123,11 @@
                                             </label>
                                         </td>
                                         <td class="px-4 py-3">
-                                            <form method="POST" action="{{ route('storeowner.modulesetting.install') }}" class="inline">
-                                                @csrf
-                                                <input type="hidden" name="moduleid" value="{{ base64_encode($module->moduleid) }}">
-                                                <input type="hidden" name="install" value="Yes">
-                                                <input type="hidden" name="plan" class="single-plan-{{ $module->moduleid }}" value="monthly">
-                                                <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
-                                                    Install
-                                                </button>
-                                            </form>
+                                            <button type="button"
+                                                    class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 install-button"
+                                                    data-module-id="{{ $module->moduleid }}">
+                                                Install
+                                            </button>
                                         </td>
                                     </tr>
                                 @empty
@@ -144,7 +139,7 @@
                         </table>
                     </div>
                     <div class="mt-4">
-                        <button type="submit" class="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800">
+                        <button type="button" id="install-selected-button" class="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800">
                             Install all selected Modules
                         </button>
                     </div>
@@ -560,14 +555,40 @@
 
         // Add new card button triggers the billing modal
 
-        document.querySelectorAll('.plan-radio').forEach(radio => {
-            radio.addEventListener('change', function () {
-                const moduleId = this.dataset.module;
-                const target = document.querySelector(`.single-plan-${moduleId}`);
-                if (target) {
-                    target.value = this.value;
-                }
+        function getPlanForModule(moduleId) {
+            const selected = document.querySelector(`input[name="plan[${moduleId}]"]:checked`);
+            return selected?.value || 'monthly';
+        }
+
+        function buildCheckoutUrl(items) {
+            const params = new URLSearchParams();
+            if (items.length) {
+                params.set('modules', items.map(item => item.id).join(','));
+                params.set('plans', items.map(item => `${item.id}:${item.plan}`).join(','));
+            }
+            return "{{ route('storeowner.modulesetting.checkout') }}" + (params.toString() ? `?${params.toString()}` : '');
+        }
+
+        document.querySelectorAll('.install-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const moduleId = button.dataset.moduleId;
+                const plan = getPlanForModule(moduleId);
+                window.location.href = buildCheckoutUrl([{ id: moduleId, plan }]);
             });
+        });
+
+        document.getElementById('install-selected-button')?.addEventListener('click', () => {
+            const selected = [];
+            document.querySelectorAll('.module-select:checked').forEach(cb => {
+                const moduleId = cb.value;
+                const plan = getPlanForModule(moduleId);
+                selected.push({ id: moduleId, plan });
+            });
+            if (!selected.length) {
+                alert('Please select at least one module.');
+                return;
+            }
+            window.location.href = buildCheckoutUrl(selected);
         });
 
         function openModuleInfoModal(id) {
