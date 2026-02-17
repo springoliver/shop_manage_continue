@@ -128,6 +128,7 @@ Route::name('storeowner.')->group(function () {
         Route::post('modulesetting/install', [StoreOwnerModuleSettingController::class, 'install'])->name('modulesetting.install');
         Route::post('modulesetting/install-selected', [StoreOwnerModuleSettingController::class, 'installSelected'])->name('modulesetting.install-selected');
         Route::post('modulesetting/auto-renew', [StoreOwnerModuleSettingController::class, 'updateAutoRenew'])->name('modulesetting.auto-renew');
+        Route::post('modulesetting/renew', [StoreOwnerModuleSettingController::class, 'renewModule'])->name('modulesetting.renew');
         Route::get('modulesetting/billing/{pmid}/invoice', [StoreOwnerModuleSettingController::class, 'downloadInvoice'])->name('modulesetting.invoice');
         Route::get('modulesetting/checkout', [StoreOwnerModuleSettingController::class, 'checkout'])->name('modulesetting.checkout');
         Route::get('modulesetting/checkout/payment', [StoreOwnerModuleSettingController::class, 'checkoutPayment'])->name('modulesetting.checkout.payment');

@@ -199,12 +199,17 @@
                                     </td>
                                     <td class="px-4 py-3 text-gray-700">
                                         @if (!$isEmployeesModule)
+                                            @php
+                                                $stripeCards = $paymentCards->filter(function ($card) {
+                                                    return !empty($card->stripe_payment_method_id) && !empty($card->stripe_customer_id);
+                                                });
+                                            @endphp
                                             <form method="POST" action="{{ route('storeowner.modulesetting.payment-cards.select') }}" class="inline">
                                                 @csrf
                                                 <input type="hidden" name="pmid" value="{{ $pm->pmid }}">
                                                 <select name="payment_card_id" class="border border-gray-300 rounded-md pl-2 pr-8 py-1 text-sm payment-card-select" data-pmid="{{ $pm->pmid }}">
                                                     <option value="">Select card</option>
-                                                    @foreach ($paymentCards as $card)
+                                                    @foreach ($stripeCards as $card)
                                                         <option value="{{ $card->cardid }}" {{ (int) $pm->payment_card_id === (int) $card->cardid ? 'selected' : '' }}>
                                                             {{ $card->card_brand ?? 'Card' }} **** {{ $card->card_last4 }} ({{ sprintf('%02d', $card->expiry_month) }}/{{ $card->expiry_year }})
                                                         </option>
@@ -237,7 +242,12 @@
                                         @if ($isEmployeesModule)
                                             <span class="px-3 py-1 rounded font-semibold bg-green-500 text-white">Freemium</span>
                                         @else
-                                            <button class="px-3 py-1 bg-gray-200 text-gray-700 rounded">Renew</button>
+                                            <form method="POST" action="{{ route('storeowner.modulesetting.renew') }}" class="inline">
+                                                @csrf
+                                                <input type="hidden" name="pmid" value="{{ $pm->pmid }}">
+                                                <input type="hidden" name="tab" value="installed">
+                                                <button type="submit" class="px-3 py-1 bg-gray-200 text-gray-700 rounded">Renew</button>
+                                            </form>
                                         @endif
                                     </td>
                                 </tr>
@@ -348,7 +358,12 @@
                                         @if ($isEmployeesModule)
                                             <span class="px-3 py-1 rounded font-semibold bg-green-500 text-white">Freemium</span>
                                         @else
-                                            <button class="px-3 py-1 bg-gray-200 text-gray-700 rounded">Renew</button>
+                                            <form method="POST" action="{{ route('storeowner.modulesetting.renew') }}" class="inline">
+                                                @csrf
+                                                <input type="hidden" name="pmid" value="{{ $pm->pmid }}">
+                                                <input type="hidden" name="tab" value="renewals">
+                                                <button type="submit" class="px-3 py-1 bg-gray-200 text-gray-700 rounded">Renew</button>
+                                            </form>
                                         @endif
                                     </td>
                                 </tr>

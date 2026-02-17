@@ -690,6 +690,109 @@ class ModuleSettingController extends Controller
             ->with('success', 'Auto renew updated.');
     }
 
+    public function renewModule(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'pmid' => ['required', 'integer', 'exists:stoma_paid_module,pmid'],
+            'tab' => ['nullable', 'string'],
+        ]);
+
+        $storeid = session('storeid', 0);
+        $user = auth('storeowner')->user();
+        $tab = $request->input('tab') === 'renewals' ? 'renewals' : 'installed';
+
+        $pm = PaidModule::with('module')
+            ->where('pmid', $validated['pmid'])
+            ->where('storeid', $storeid)
+            ->first();
+
+        if (! $pm || ! $pm->module) {
+            return redirect()->route('storeowner.modulesetting.index', ['tab' => $tab])
+                ->with('error', 'Module not found.');
+        }
+
+        $moduleName = strtolower($pm->module->module ?? '');
+        if ($moduleName === 'employee') {
+            return redirect()->route('storeowner.modulesetting.index', ['tab' => $tab])
+                ->with('error', 'Employee module does not require renewal.');
+        }
+
+        if (! $pm->payment_card_id) {
+            return redirect()->route('storeowner.modulesetting.index', ['tab' => $tab])
+                ->with('error', 'Please select a payment card before renewing.');
+        }
+
+        $card = PaymentCard::where('cardid', $pm->payment_card_id)
+            ->where('ownerid', $user->ownerid)
+            ->first();
+
+        if (! $card || ! $card->stripe_payment_method_id || ! $card->stripe_customer_id) {
+            return redirect()->route('storeowner.modulesetting.index', ['tab' => $tab])
+                ->with('error', 'Selected payment card is not linked to Stripe.');
+        }
+
+        $stripeSecret = config('services.stripe.secret');
+        if (! $stripeSecret) {
+            return redirect()->route('storeowner.modulesetting.index', ['tab' => $tab])
+                ->with('error', 'Stripe is not configured.');
+        }
+
+        $billingCycle = $pm->billing_cycle === 'yearly' ? 'yearly' : 'monthly';
+        $months = $billingCycle === 'yearly' ? 12 : 1;
+        $amount = $billingCycle === 'yearly'
+            ? ($pm->module->price_12months ?? $pm->paid_amount)
+            : ($pm->module->price_1months ?? $pm->paid_amount);
+        $amount = (float) $amount;
+
+        if ($amount <= 0) {
+            return redirect()->route('storeowner.modulesetting.index', ['tab' => $tab])
+                ->with('error', 'This module has no renewal price configured.');
+        }
+
+        $currentExpiry = $pm->expire_date ? Carbon::parse($pm->expire_date) : null;
+        $startDate = $currentExpiry && $currentExpiry->endOfDay()->greaterThan(now())
+            ? $currentExpiry->copy()->addDay()->startOfDay()
+            : now()->startOfDay();
+        $newExpiry = $startDate->copy()->addMonths($months)->endOfDay();
+
+        $stripe = new StripeClient($stripeSecret);
+        try {
+            $stripe->paymentIntents->create([
+                'amount' => (int) round($amount * 100),
+                'currency' => 'eur',
+                'customer' => $card->stripe_customer_id,
+                'payment_method' => $card->stripe_payment_method_id,
+                'off_session' => true,
+                'confirm' => true,
+                'description' => 'Module renewal: ' . ($pm->module->module ?? 'Module'),
+            ]);
+        } catch (\Stripe\Exception\CardException $e) {
+            return redirect()->route('storeowner.modulesetting.index', ['tab' => $tab])
+                ->with('error', $e->getError()->message ?? 'Card payment failed.');
+        } catch (\Throwable $e) {
+            return redirect()->route('storeowner.modulesetting.index', ['tab' => $tab])
+                ->with('error', 'Payment failed. Please try again or use another card.');
+        }
+
+        PaidModule::create([
+            'storeid' => $storeid,
+            'moduleid' => $pm->module->moduleid,
+            'purchase_date' => $startDate->copy()->startOfDay(),
+            'expire_date' => $newExpiry,
+            'paid_amount' => $amount,
+            'status' => 'Enable',
+            'insertdatetime' => now(),
+            'insertip' => $request->ip(),
+            'isTrial' => 0,
+            'auto_renew' => $pm->auto_renew ? 1 : 0,
+            'billing_cycle' => $billingCycle,
+            'payment_card_id' => $pm->payment_card_id,
+        ]);
+
+        return redirect()->route('storeowner.modulesetting.index', ['tab' => $tab])
+            ->with('success', 'Module renewed successfully.');
+    }
+
     public function storePaymentCard(Request $request): RedirectResponse
     {
         if (! Session::has('payment_card_address')) {
