@@ -626,7 +626,7 @@
             select.addEventListener('change', function () {
                 if (this.value === 'add_new') {
                     const pmid = this.dataset.pmid;
-                    window.location.href = "{{ route('storeowner.modulesetting.payment-cards') }}" + "?pmid=" + pmid + "&modal=address";
+                    window.location.href = "{{ route('storeowner.modulesetting.payment-cards') }}" + "?pmid=" + pmid;
                     this.value = '';
                     return;
                 }

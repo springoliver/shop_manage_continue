@@ -137,6 +137,8 @@ Route::name('storeowner.')->group(function () {
         Route::post('modulesetting/payment-cards/address', [StoreOwnerModuleSettingController::class, 'storePaymentCardAddress'])->name('modulesetting.payment-cards.address.store');
         Route::post('modulesetting/payment-cards/details', [StoreOwnerModuleSettingController::class, 'storePaymentCardDetails'])->name('modulesetting.payment-cards.details.store');
         Route::post('modulesetting/payment-cards/select', [StoreOwnerModuleSettingController::class, 'updatePaymentCard'])->name('modulesetting.payment-cards.select');
+        Route::post('modulesetting/payment-cards/update', [StoreOwnerModuleSettingController::class, 'updatePaymentCardDetails'])->name('modulesetting.payment-cards.update');
+        Route::post('modulesetting/payment-cards/delete', [StoreOwnerModuleSettingController::class, 'deletePaymentCard'])->name('modulesetting.payment-cards.delete');
 
         // Roster routes (Base Roster)
         Route::get('roster', [StoreOwnerRosterController::class, 'index'])->name('roster.index');

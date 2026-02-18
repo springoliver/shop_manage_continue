@@ -27,6 +27,20 @@
         </nav>
     </div>
 
+    @if (session('success'))
+        <div class="mb-4 px-4 py-3 bg-green-100 border border-green-400 text-green-700 rounded relative" role="alert">
+            <button type="button" class="absolute top-0 right-0 px-4 py-3" onclick="this.parentElement.style.display='none'">&times;</button>
+            <span class="block sm:inline">{{ session('success') }}</span>
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div class="mb-4 px-4 py-3 bg-red-100 border border-red-400 text-red-700 rounded relative" role="alert">
+            <button type="button" class="absolute top-0 right-0 px-4 py-3" onclick="this.parentElement.style.display='none'">&times;</button>
+            <span class="block sm:inline">{{ session('error') }}</span>
+        </div>
+    @endif
+
     <div class="bg-gray-100 border border-gray-200 rounded-lg">
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <div>
@@ -55,8 +69,32 @@
                                 <td class="px-4 py-3 text-gray-700">{{ $card->name_on_card }}</td>
                                 <td class="px-4 py-3 text-gray-700">xxxx xxxx xxxx {{ $card->card_last4 }}</td>
                                 <td class="px-4 py-3 text-gray-700">{{ sprintf('%02d', $card->expiry_month) }}/{{ $card->expiry_year }}</td>
-                                <td class="px-4 py-3 text-gray-700">0</td>
-                                <td class="px-4 py-3 text-gray-700">Actions</td>
+                                <td class="px-4 py-3 text-gray-700">{{ $assignedCounts[$card->cardid] ?? 0 }}</td>
+                                <td class="px-4 py-3 text-gray-700">
+                                    @php
+                                        $assignedTotal = $assignedCounts[$card->cardid] ?? 0;
+                                    @endphp
+                                    <div class="flex items-center gap-2">
+                                        <button type="button"
+                                                class="px-3 py-1 bg-gray-200 text-gray-700 rounded-md"
+                                                onclick="openEditCardModal('{{ $card->cardid }}', '{{ addslashes($card->name_on_card) }}')">
+                                            Edit
+                                        </button>
+                                        @if ($assignedTotal > 0)
+                                            <button type="button"
+                                                    class="px-3 py-1 bg-gray-300 text-gray-600 rounded-md cursor-not-allowed"
+                                                    title="Assigned to modules. Please change payment method before deleting.">
+                                                Delete
+                                            </button>
+                                        @else
+                                            <form method="POST" action="{{ route('storeowner.modulesetting.payment-cards.delete') }}" onsubmit="return confirm('Delete this card?');">
+                                                @csrf
+                                                <input type="hidden" name="cardid" value="{{ $card->cardid }}">
+                                                <button type="submit" class="px-3 py-1 bg-red-500 text-white rounded-md">Delete</button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </td>
                             </tr>
                         @empty
                             <tr>
@@ -142,6 +180,33 @@
         </div>
     </div>
 
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden" id="edit-card-modal" onclick="if(event.target === this) closeEditCardModal()">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="relative bg-white rounded-lg shadow-lg p-6 w-full max-w-md" onclick="event.stopPropagation()">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-700">Edit Card</h2>
+                    <button onclick="closeEditCardModal()" class="text-gray-400 hover:text-gray-600 text-xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form method="POST" action="{{ route('storeowner.modulesetting.payment-cards.update') }}">
+                    @csrf
+                    <input type="hidden" name="cardid" id="edit-card-id">
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <label class="block text-sm text-gray-600 mb-1">Name on Card *</label>
+                            <input type="text" name="name_on_card" id="edit-card-name" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex items-center justify-end gap-3">
+                        <button type="button" class="px-4 py-2 bg-gray-200 rounded-md" onclick="closeEditCardModal()">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div id="billing-address-data" data-address='@json(session('payment_card_address', []))'></div>
     <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden" id="card-details-modal" onclick="if(event.target === this) closeCardDetailsModal()">
         <div class="flex items-center justify-center min-h-screen p-4">
@@ -209,13 +274,19 @@
             document.body.style.overflow = '';
         }
 
+        function openEditCardModal(cardId, cardName) {
+            document.getElementById('edit-card-id').value = cardId;
+            document.getElementById('edit-card-name').value = cardName || '';
+            document.getElementById('edit-card-modal')?.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeEditCardModal() {
+            document.getElementById('edit-card-modal')?.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
         const modalParam = new URLSearchParams(window.location.search).get('modal');
-        if (modalParam === 'address') {
-            openBillingAddressModal();
-        }
-        if (modalParam === 'details') {
-            openCardDetailsModal();
-        }
 
         const stripeKey = "{{ config('services.stripe.key') }}";
         const stripe = stripeKey ? Stripe(stripeKey) : null;
@@ -258,7 +329,7 @@
         }
 
         if (modalParam === 'details') {
-            ensureStripeElements();
+            // keep placeholder to avoid unused var warnings if needed
         }
 
         if (cardForm) {

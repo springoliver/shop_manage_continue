@@ -818,7 +818,18 @@ class ModuleSettingController extends Controller
             ->orderBy('insertdate', 'desc')
             ->get();
 
-        return view('storeowner.modulesetting.payment-cards', compact('paymentCards'));
+        $cardIds = $paymentCards->pluck('cardid')->all();
+        $assignedCounts = [];
+        if (! empty($cardIds)) {
+            $assignedCounts = PaidModule::where('storeid', $storeid)
+                ->whereIn('payment_card_id', $cardIds)
+                ->select('payment_card_id', DB::raw('count(*) as total'))
+                ->groupBy('payment_card_id')
+                ->pluck('total', 'payment_card_id')
+                ->toArray();
+        }
+
+        return view('storeowner.modulesetting.payment-cards', compact('paymentCards', 'assignedCounts'));
     }
 
     public function storePaymentCardAddress(Request $request): RedirectResponse
@@ -1016,5 +1027,95 @@ class ModuleSettingController extends Controller
 
         return redirect()->route('storeowner.modulesetting.index', ['tab' => 'installed'])
             ->with('success', 'Payment method updated.');
+    }
+
+    public function updatePaymentCardDetails(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'cardid' => ['required', 'integer', 'exists:stoma_payment_card,cardid'],
+            'name_on_card' => ['required', 'string', 'max:255'],
+        ]);
+
+        $user = auth('storeowner')->user();
+        $storeid = session('storeid', 0);
+
+        $card = PaymentCard::where('cardid', $validated['cardid'])
+            ->where('storeid', $storeid)
+            ->where('ownerid', $user->ownerid)
+            ->first();
+
+        if (! $card) {
+            return redirect()->route('storeowner.modulesetting.payment-cards')
+                ->with('error', 'Payment card not found.');
+        }
+
+        $stripeSecret = config('services.stripe.secret');
+        if ($stripeSecret && $card->stripe_payment_method_id) {
+            try {
+                $stripe = new StripeClient($stripeSecret);
+                $stripe->paymentMethods->update($card->stripe_payment_method_id, [
+                    'billing_details' => [
+                        'name' => $validated['name_on_card'],
+                    ],
+                ]);
+            } catch (\Throwable $e) {
+                return redirect()->route('storeowner.modulesetting.payment-cards')
+                    ->with('error', 'Unable to update Stripe card details. Please try again.');
+            }
+        }
+
+        $card->update([
+            'name_on_card' => $validated['name_on_card'],
+        ]);
+
+        return redirect()->route('storeowner.modulesetting.payment-cards')
+            ->with('success', 'Payment card updated.');
+    }
+
+    public function deletePaymentCard(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'cardid' => ['required', 'integer', 'exists:stoma_payment_card,cardid'],
+        ]);
+
+        $user = auth('storeowner')->user();
+        $storeid = session('storeid', 0);
+
+        $card = PaymentCard::where('cardid', $validated['cardid'])
+            ->where('storeid', $storeid)
+            ->where('ownerid', $user->ownerid)
+            ->first();
+
+        if (! $card) {
+            return redirect()->route('storeowner.modulesetting.payment-cards')
+                ->with('error', 'Payment card not found.');
+        }
+
+        $isAssigned = PaidModule::where('storeid', $storeid)
+            ->where('payment_card_id', $card->cardid)
+            ->exists();
+
+        if ($isAssigned) {
+            return redirect()->route('storeowner.modulesetting.payment-cards')
+                ->with('error', 'This card is assigned to modules. Please select another card before deleting.');
+        }
+
+        $stripeSecret = config('services.stripe.secret');
+        if ($stripeSecret && $card->stripe_payment_method_id) {
+            try {
+                $stripe = new StripeClient($stripeSecret);
+                $stripe->paymentMethods->detach($card->stripe_payment_method_id);
+            } catch (\Stripe\Exception\InvalidRequestException $e) {
+                // Ignore already-detached or missing payment methods.
+            } catch (\Throwable $e) {
+                return redirect()->route('storeowner.modulesetting.payment-cards')
+                    ->with('error', 'Unable to delete Stripe card. Please try again.');
+            }
+        }
+
+        $card->delete();
+
+        return redirect()->route('storeowner.modulesetting.payment-cards')
+            ->with('success', 'Payment card deleted.');
     }
 }
