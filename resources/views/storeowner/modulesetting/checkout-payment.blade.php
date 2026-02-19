@@ -29,13 +29,28 @@
     </div>
 
     <div class="bg-white rounded-lg shadow-md p-6">
+        @if (session('success'))
+            <div class="mb-4 px-4 py-3 bg-green-100 border border-green-400 text-green-700 rounded relative" role="alert">
+                <button type="button" class="absolute top-0 right-0 px-4 py-3" onclick="this.parentElement.style.display='none'">&times;</button>
+                <span class="block sm:inline">{{ session('success') }}</span>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="mb-4 px-4 py-3 bg-red-100 border border-red-400 text-red-700 rounded relative" role="alert">
+                <button type="button" class="absolute top-0 right-0 px-4 py-3" onclick="this.parentElement.style.display='none'">&times;</button>
+                <span class="block sm:inline">{{ session('error') }}</span>
+            </div>
+        @endif
+
         <h2 class="text-2xl font-semibold text-gray-800 mb-2">Checkout</h2>
         <div class="text-xs text-gray-500 mb-6">My Invoices / Invoice #{{ $invoiceNumber }}</div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2">
                 <h3 class="text-lg font-semibold text-gray-800 mb-3">Payment Method</h3>
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                <form id="checkout-pay-form" method="POST" action="{{ route('storeowner.modulesetting.checkout.pay', request()->query()) }}" class="bg-white border border-gray-200 rounded-lg p-4">
+                    @csrf
                     <div class="flex items-center space-x-4 text-sm font-medium text-gray-600 border-b pb-3 mb-4">
                         <span class="text-green-700">Use Existing Card</span>
                         <span class="text-gray-400">Enter New Card Information Below</span>
@@ -44,7 +59,11 @@
                     @forelse ($paymentCards as $card)
                         <label class="flex items-center justify-between border border-green-500 rounded-md p-3 mb-3 cursor-pointer">
                             <div class="flex items-center space-x-3">
-                                <input type="radio" name="payment_card_id" class="rounded border-gray-300" checked>
+                                <input type="radio"
+                                       name="payment_card_id"
+                                       value="{{ $card->cardid }}"
+                                       class="rounded border-gray-300"
+                                       {{ $loop->first ? 'checked' : '' }}>
                                 <div class="text-sm text-gray-700">
                                     <div class="font-semibold">{{ $card->card_brand ?? 'Card' }}-{{ $card->card_last4 }}</div>
                                     <div class="text-xs text-gray-500">Visa {{ $card->card_last4 }} **** {{ $card->card_last4 }} exp {{ sprintf('%02d', $card->expiry_month) }}/{{ $card->expiry_year }}</div>
@@ -60,7 +79,8 @@
                         Any data you enter here is submitted securely and is encrypted to reduce the risk of fraud.
                         Stripe will be used for payment processing.
                     </div>
-                </div>
+
+                </form>
             </div>
 
             <div class="lg:col-span-1 w-[75%]">
@@ -93,7 +113,9 @@
                         <div>€{{ number_format($total, 2) }}</div>
                     </div>
 
-                    <button class="mt-4 w-full bg-white text-green-700 font-semibold py-2 rounded-md opacity-60 cursor-not-allowed">
+                    <button form="checkout-pay-form"
+                            type="submit"
+                            class="mt-4 w-full bg-white text-green-700 font-semibold py-2 rounded-md">
                         Pay
                     </button>
                 </div>

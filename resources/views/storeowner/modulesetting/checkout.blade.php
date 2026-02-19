@@ -36,8 +36,7 @@
                                 <input type="checkbox"
                                        class="module-check rounded border-gray-300"
                                        data-module-id="{{ $module->moduleid }}"
-                                       data-module="{{ $module->module ?? 'Module' }}"
-                                       checked>
+                                       data-module="{{ $module->module ?? 'Module' }}">
                                 <div class="font-semibold text-gray-800 uppercase">{{ $module->module ?? 'Module' }}</div>
                             </div>
                             <div class="text-sm text-gray-700">
@@ -94,7 +93,7 @@
                         <div id="summary-total">€0.00</div>
                     </div>
 
-                    <a href="{{ route('storeowner.modulesetting.checkout.payment') }}" class="mt-4 w-full bg-white text-green-700 font-semibold py-2 rounded-md text-center block">
+                    <a id="checkout-link" href="{{ route('storeowner.modulesetting.checkout.payment', request()->query()) }}" class="mt-4 w-full bg-white text-green-700 font-semibold py-2 rounded-md text-center block">
                         Checkout
                     </a>
                 </div>
@@ -205,22 +204,50 @@
                 });
             }
 
+            function updateCheckoutLink() {
+                const selected = [];
+                document.querySelectorAll('.module-check').forEach(check => {
+                    if (!check.checked) {
+                        return;
+                    }
+                    const row = check.closest('.module-row');
+                    const moduleId = check.dataset.moduleId;
+                    const selectedPlan = row.querySelector('.module-plan:checked');
+                    const cycle = selectedPlan?.value || 'monthly';
+                    selected.push({ id: moduleId, plan: cycle });
+                });
+
+                const params = new URLSearchParams();
+                if (selected.length) {
+                    params.set('modules', selected.map(item => item.id).join(','));
+                    params.set('plans', selected.map(item => `${item.id}:${item.plan}`).join(','));
+                }
+                const checkoutLink = document.getElementById('checkout-link');
+                if (checkoutLink) {
+                    const baseUrl = "{{ route('storeowner.modulesetting.checkout.payment') }}";
+                    checkoutLink.href = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+                }
+            }
+
             document.querySelectorAll('.module-check').forEach(check => {
                 check.addEventListener('change', () => {
                     updateSavingsLabels();
                     recalcSummary();
+                    updateCheckoutLink();
                 });
             });
             document.querySelectorAll('.module-plan').forEach(radio => {
                 radio.addEventListener('change', () => {
                     updateSavingsLabels();
                     recalcSummary();
+                    updateCheckoutLink();
                 });
             });
 
             applyQuerySelection();
             updateSavingsLabels();
             recalcSummary();
+            updateCheckoutLink();
         </script>
     @endpush
 </x-storeowner-app-layout>

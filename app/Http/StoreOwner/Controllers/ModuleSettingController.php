@@ -232,15 +232,39 @@ class ModuleSettingController extends Controller
 
         $availableModules = Module::where('status', 'Enable')
             ->whereNotIn('moduleid', $installedModuleIds)
-            ->get();
+            ->get()
+            ->keyBy('moduleid');
 
-        $summaryItems = $availableModules->map(function (Module $module) {
+        $modulesParam = request()->query('modules', '');
+        $plansParam = request()->query('plans', '');
+
+        $selectedModuleIds = $modulesParam
+            ? collect(explode(',', $modulesParam))->filter()->map(fn ($id) => (int) $id)->values()
+            : $availableModules->keys()->values();
+
+        $planMap = collect(explode(',', $plansParam))
+            ->filter()
+            ->mapWithKeys(function ($pair) {
+                [$id, $cycle] = array_pad(explode(':', $pair, 2), 2, null);
+                return $id ? [(int) $id => $cycle === 'yearly' ? 'yearly' : 'monthly'] : [];
+            })
+            ->all();
+
+        $summaryItems = $selectedModuleIds->map(function ($moduleId) use ($availableModules, $planMap) {
+            $module = $availableModules->get($moduleId);
+            if (! $module) {
+                return null;
+            }
+            $cycle = $planMap[$moduleId] ?? 'monthly';
+            $amount = $cycle === 'yearly'
+                ? (float) ($module->price_12months ?? 0)
+                : (float) ($module->price_1months ?? 0);
             return (object) [
                 'module' => $module->module ?? 'Module',
-                'cycle' => 'monthly',
-                'amount' => (float) ($module->price_1months ?? 0),
+                'cycle' => $cycle,
+                'amount' => $amount,
             ];
-        });
+        })->filter()->values();
 
         $subtotal = $summaryItems->sum('amount');
         $vatRate = 0.23;
@@ -288,15 +312,39 @@ class ModuleSettingController extends Controller
 
         $availableModules = Module::where('status', 'Enable')
             ->whereNotIn('moduleid', $installedModuleIds)
-            ->get();
+            ->get()
+            ->keyBy('moduleid');
 
-        $summaryItems = $availableModules->map(function (Module $module) {
+        $modulesParam = request()->query('modules', '');
+        $plansParam = request()->query('plans', '');
+
+        $selectedModuleIds = $modulesParam
+            ? collect(explode(',', $modulesParam))->filter()->map(fn ($id) => (int) $id)->values()
+            : $availableModules->keys()->values();
+
+        $planMap = collect(explode(',', $plansParam))
+            ->filter()
+            ->mapWithKeys(function ($pair) {
+                [$id, $cycle] = array_pad(explode(':', $pair, 2), 2, null);
+                return $id ? [(int) $id => $cycle === 'yearly' ? 'yearly' : 'monthly'] : [];
+            })
+            ->all();
+
+        $summaryItems = $selectedModuleIds->map(function ($moduleId) use ($availableModules, $planMap) {
+            $module = $availableModules->get($moduleId);
+            if (! $module) {
+                return null;
+            }
+            $cycle = $planMap[$moduleId] ?? 'monthly';
+            $amount = $cycle === 'yearly'
+                ? (float) ($module->price_12months ?? 0)
+                : (float) ($module->price_1months ?? 0);
             return (object) [
                 'module' => $module->module ?? 'Module',
-                'cycle' => 'monthly',
-                'amount' => (float) ($module->price_1months ?? 0),
+                'cycle' => $cycle,
+                'amount' => $amount,
             ];
-        });
+        })->filter()->values();
 
         $subtotal = $summaryItems->sum('amount');
         $vatRate = 0.23;
@@ -319,6 +367,128 @@ class ModuleSettingController extends Controller
             'total',
             'invoiceNumber'
         ));
+    }
+
+    public function checkoutPay(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'payment_card_id' => ['required', 'integer', 'exists:stoma_payment_card,cardid'],
+        ]);
+
+        $user = auth('storeowner')->user();
+        $storeid = session('storeid', 0);
+        $ownerid = $user->ownerid;
+        $modulesParam = $request->query('modules', '');
+        $plansParam = $request->query('plans', '');
+
+        if (! $modulesParam) {
+            return redirect()->route('storeowner.modulesetting.checkout')
+                ->with('error', 'Please select at least one module.');
+        }
+
+        $moduleIds = collect(explode(',', $modulesParam))
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        if ($moduleIds->isEmpty()) {
+            return redirect()->route('storeowner.modulesetting.checkout')
+                ->with('error', 'Please select at least one module.');
+        }
+
+        $planMap = collect(explode(',', $plansParam))
+            ->filter()
+            ->mapWithKeys(function ($pair) {
+                [$id, $cycle] = array_pad(explode(':', $pair, 2), 2, null);
+                return $id ? [(int) $id => $cycle === 'yearly' ? 'yearly' : 'monthly'] : [];
+            })
+            ->all();
+
+        $card = PaymentCard::where('cardid', $validated['payment_card_id'])
+            ->where('storeid', $storeid)
+            ->where('ownerid', $ownerid)
+            ->first();
+
+        if (! $card || ! $card->stripe_payment_method_id || ! $card->stripe_customer_id) {
+            return redirect()->route('storeowner.modulesetting.checkout.payment', $request->query())
+                ->with('error', 'Selected payment card is not linked to Stripe.');
+        }
+
+        $stripeSecret = config('services.stripe.secret');
+        if (! $stripeSecret) {
+            return redirect()->route('storeowner.modulesetting.checkout.payment', $request->query())
+                ->with('error', 'Stripe is not configured.');
+        }
+
+        $modules = Module::whereIn('moduleid', $moduleIds)->get()->keyBy('moduleid');
+        $subtotal = 0.0;
+        $lineItems = [];
+
+        foreach ($moduleIds as $moduleId) {
+            $module = $modules->get($moduleId);
+            if (! $module) {
+                continue;
+            }
+            $cycle = $planMap[$moduleId] ?? 'monthly';
+            $amount = $cycle === 'yearly'
+                ? (float) ($module->price_12months ?? 0)
+                : (float) ($module->price_1months ?? 0);
+            $subtotal += $amount;
+            $lineItems[] = [
+                'module' => $module,
+                'cycle' => $cycle,
+                'amount' => $amount,
+            ];
+        }
+
+        if ($subtotal <= 0) {
+            return redirect()->route('storeowner.modulesetting.checkout.payment', $request->query())
+                ->with('error', 'No valid items to pay.');
+        }
+
+        $vatRate = 0.23;
+        $vatAmount = $subtotal * $vatRate;
+        $total = $subtotal + $vatAmount;
+
+        $stripe = new StripeClient($stripeSecret);
+        try {
+            $stripe->paymentIntents->create([
+                'amount' => (int) round($total * 100),
+                'currency' => 'eur',
+                'customer' => $card->stripe_customer_id,
+                'payment_method' => $card->stripe_payment_method_id,
+                'off_session' => true,
+                'confirm' => true,
+                'description' => 'Module checkout',
+            ]);
+        } catch (\Stripe\Exception\CardException $e) {
+            return redirect()->route('storeowner.modulesetting.checkout.payment', $request->query())
+                ->with('error', $e->getError()->message ?? 'Card payment failed.');
+        } catch (\Throwable $e) {
+            return redirect()->route('storeowner.modulesetting.checkout.payment', $request->query())
+                ->with('error', 'Payment failed. Please try again or use another card.');
+        }
+
+        foreach ($lineItems as $item) {
+            $months = $item['cycle'] === 'yearly' ? 12 : 1;
+            PaidModule::create([
+                'storeid' => $storeid,
+                'moduleid' => $item['module']->moduleid,
+                'purchase_date' => now()->startOfDay(),
+                'expire_date' => now()->addMonths($months)->endOfDay(),
+                'paid_amount' => $item['amount'],
+                'status' => 'Enable',
+                'insertdatetime' => now(),
+                'insertip' => $request->ip(),
+                'isTrial' => 0,
+                'auto_renew' => 0,
+                'billing_cycle' => $item['cycle'],
+                'payment_card_id' => $card->cardid,
+            ]);
+        }
+
+        return redirect()->route('storeowner.modulesetting.index', ['tab' => 'installed'])
+            ->with('success', 'Payment completed and modules installed.');
     }
 
     /**
