@@ -51,6 +51,7 @@
                 <h3 class="text-lg font-semibold text-gray-800 mb-3">Payment Method</h3>
                 <form id="checkout-pay-form" method="POST" action="{{ route('storeowner.modulesetting.checkout.pay', request()->query()) }}" class="bg-white border border-gray-200 rounded-lg p-4">
                     @csrf
+                    <input type="hidden" name="checkout_token" value="{{ $checkoutToken }}">
                     <div class="flex items-center space-x-4 text-sm font-medium text-gray-600 border-b pb-3 mb-4">
                         <span class="text-green-700">Use Existing Card</span>
                         <span class="text-gray-400">Enter New Card Information Below</span>
@@ -113,7 +114,8 @@
                         <div>€{{ number_format($total, 2) }}</div>
                     </div>
 
-                    <button form="checkout-pay-form"
+                    <button id="checkout-pay-button"
+                            form="checkout-pay-form"
                             type="submit"
                             class="mt-4 w-full bg-white text-green-700 font-semibold py-2 rounded-md">
                         Pay
@@ -122,4 +124,16 @@
             </div>
         </div>
     </div>
+
+    <script>
+        const checkoutPayForm = document.getElementById('checkout-pay-form');
+        const checkoutPayButton = document.getElementById('checkout-pay-button');
+        if (checkoutPayForm && checkoutPayButton) {
+            checkoutPayForm.addEventListener('submit', () => {
+                checkoutPayButton.disabled = true;
+                checkoutPayButton.classList.add('opacity-60', 'cursor-not-allowed');
+                checkoutPayButton.textContent = 'Processing...';
+            });
+        }
+    </script>
 </x-storeowner-app-layout>

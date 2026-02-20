@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\View\View;
 use Carbon\Carbon;
 use Stripe\StripeClient;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 class ModuleSettingController extends Controller
 {
@@ -358,6 +360,10 @@ class ModuleSettingController extends Controller
 
         $invoiceNumber = 'INV-' . str_pad((string) $storeid, 6, '0', STR_PAD_LEFT);
 
+        $checkoutToken = (string) Str::uuid();
+        Session::put('checkout_token', $checkoutToken);
+        Session::forget('checkout_token_used');
+
         return view('storeowner.modulesetting.checkout-payment', compact(
             'paymentCards',
             'summaryItems',
@@ -365,7 +371,8 @@ class ModuleSettingController extends Controller
             'vatRate',
             'vatAmount',
             'total',
-            'invoiceNumber'
+            'invoiceNumber',
+            'checkoutToken'
         ));
     }
 
@@ -373,6 +380,7 @@ class ModuleSettingController extends Controller
     {
         $validated = $request->validate([
             'payment_card_id' => ['required', 'integer', 'exists:stoma_payment_card,cardid'],
+            'checkout_token' => ['required', 'string'],
         ]);
 
         $user = auth('storeowner')->user();
@@ -384,6 +392,16 @@ class ModuleSettingController extends Controller
         if (! $modulesParam) {
             return redirect()->route('storeowner.modulesetting.checkout')
                 ->with('error', 'Please select at least one module.');
+        }
+
+        $sessionToken = (string) Session::get('checkout_token', '');
+        if (! $sessionToken || $sessionToken !== $validated['checkout_token']) {
+            return redirect()->route('storeowner.modulesetting.checkout.payment', $request->query())
+                ->with('error', 'Checkout session expired. Please try again.');
+        }
+        if (Session::get('checkout_token_used') === $sessionToken) {
+            return redirect()->route('storeowner.modulesetting.index', ['tab' => 'installed'])
+                ->with('error', 'This payment was already processed.');
         }
 
         $moduleIds = collect(explode(',', $modulesParam))
@@ -450,6 +468,12 @@ class ModuleSettingController extends Controller
         $vatAmount = $subtotal * $vatRate;
         $total = $subtotal + $vatAmount;
 
+        $lockKey = 'checkout:pay:' . $storeid . ':' . $card->cardid . ':' . md5($modulesParam . '|' . $plansParam . '|' . $total);
+        if (! Cache::add($lockKey, true, now()->addMinutes(5))) {
+            return redirect()->route('storeowner.modulesetting.checkout.payment', $request->query())
+                ->with('error', 'Payment is already being processed.');
+        }
+
         $stripe = new StripeClient($stripeSecret);
         try {
             $stripe->paymentIntents->create([
@@ -460,14 +484,24 @@ class ModuleSettingController extends Controller
                 'off_session' => true,
                 'confirm' => true,
                 'description' => 'Module checkout',
-            ]);
+                'metadata' => [
+                    'type' => 'checkout',
+                    'modules' => $modulesParam,
+                    'plans' => $plansParam,
+                    'checkout_token' => $sessionToken,
+                ],
+            ], ['idempotency_key' => $sessionToken]);
         } catch (\Stripe\Exception\CardException $e) {
+            Cache::forget($lockKey);
             return redirect()->route('storeowner.modulesetting.checkout.payment', $request->query())
                 ->with('error', $e->getError()->message ?? 'Card payment failed.');
         } catch (\Throwable $e) {
+            Cache::forget($lockKey);
             return redirect()->route('storeowner.modulesetting.checkout.payment', $request->query())
                 ->with('error', 'Payment failed. Please try again or use another card.');
         }
+
+        Session::put('checkout_token_used', $sessionToken);
 
         foreach ($lineItems as $item) {
             $months = $item['cycle'] === 'yearly' ? 12 : 1;
