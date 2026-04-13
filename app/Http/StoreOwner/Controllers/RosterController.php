@@ -9,6 +9,7 @@ use App\Models\Week;
 use App\Models\Year;
 use App\Models\StoreEmployee;
 use App\Models\Department;
+use App\Models\HolidayRequest;
 use App\Services\StoreOwner\RosterService;
 use App\Services\StoreOwner\ModuleService;
 use App\Http\StoreOwner\Traits\HandlesEmployeeAccess;
@@ -339,8 +340,29 @@ class RosterController extends Controller
         $weekNumber = (int) $date->format('W');
         $year = $date->format('Y');
         
-        // Get leave requests if available (for future integration)
-        $leaveRequests = []; // TODO: Integrate with holiday_request module
+        $weekStart = (clone $date)->modify('monday this week');
+        $weekEnd = (clone $weekStart)->modify('+6 days');
+
+        // Pull approved leave requests overlapping this week.
+        $leaveRequests = HolidayRequest::query()
+            ->where('storeid', $storeid)
+            ->where('status', 'Approved')
+            ->whereDate('from_date', '<=', $weekEnd->format('Y-m-d'))
+            ->whereDate('to_date', '>=', $weekStart->format('Y-m-d'))
+            ->get(['employeeid', 'from_date', 'to_date', 'status'])
+            ->map(function ($leave) {
+                return [
+                    'employeeid' => $leave->employeeid,
+                    'from_date' => $leave->from_date instanceof \DateTimeInterface
+                        ? $leave->from_date->format('Y-m-d')
+                        : date('Y-m-d', strtotime((string) $leave->from_date)),
+                    'to_date' => $leave->to_date instanceof \DateTimeInterface
+                        ? $leave->to_date->format('Y-m-d')
+                        : date('Y-m-d', strtotime((string) $leave->to_date)),
+                    'status' => $leave->status,
+                ];
+            })
+            ->toArray();
         
         // Generate weekly roster
         $this->rosterService->generateWeeklyRoster($storeid, $weekNumber, $year, $leaveRequests);

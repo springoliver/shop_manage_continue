@@ -133,11 +133,51 @@
         </div>
     </div>
 
+    <!-- Leave Warning Modal -->
+    <div id="leaveWarningModal" class="fixed inset-0 bg-black/50 hidden z-50 items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+            <div class="flex items-center justify-between px-6 py-4 border-b">
+                <h3 class="text-lg font-semibold text-gray-800">Employees on Approved Leave</h3>
+                <button type="button" id="leaveModalCloseTop" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-gray-600 mb-4">
+                    The selected week contains approved leave requests. Review the list below and continue to save if you want to proceed.
+                </p>
+                <div class="overflow-x-auto border rounded-md">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">From</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">To</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaveModalTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t flex justify-end space-x-3">
+                <button type="button" id="leaveModalClose" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="button" id="leaveModalProceed" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Continue Save</button>
+            </div>
+        </div>
+    </div>
+
     @push('scripts')
     <script>
         let selectedWeekDate = null;
+        let skipLeaveCheck = false;
+        const rosterForm = document.getElementById('rosterForm');
+        const weekInput = document.getElementById('weeknumber');
+        const leaveModal = document.getElementById('leaveWarningModal');
+        const leaveModalTableBody = document.getElementById('leaveModalTableBody');
+        const leaveModalClose = document.getElementById('leaveModalClose');
+        const leaveModalCloseTop = document.getElementById('leaveModalCloseTop');
+        const leaveModalProceed = document.getElementById('leaveModalProceed');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         
-        document.getElementById('weeknumber').addEventListener('change', function() {
+        weekInput.addEventListener('change', function() {
             const dateValue = this.value;
             if (!dateValue) {
                 selectedWeekDate = null;
@@ -184,6 +224,90 @@
             }
             
             window.location.href = emailUrl;
+        });
+
+        function openLeaveModal() {
+            leaveModal.classList.remove('hidden');
+            leaveModal.classList.add('flex');
+        }
+
+        function closeLeaveModal() {
+            leaveModal.classList.remove('flex');
+            leaveModal.classList.add('hidden');
+        }
+
+        function renderLeaveRows(leaves) {
+            if (!leaves || leaves.length === 0) {
+                leaveModalTableBody.innerHTML = '<tr><td colspan="3" class="px-4 py-3 text-sm text-gray-500">No employees on leave for this week.</td></tr>';
+                return;
+            }
+
+            leaveModalTableBody.innerHTML = leaves.map((leave) => {
+                const name = `${leave.firstname ?? ''} ${leave.lastname ?? ''}`.trim();
+                return `
+                    <tr>
+                        <td class="px-4 py-3 text-sm text-gray-900">${name}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700">${leave.start_date ?? '-'}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700">${leave.end_date ?? '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        rosterForm.addEventListener('submit', async function (e) {
+            if (skipLeaveCheck) {
+                skipLeaveCheck = false;
+                return;
+            }
+
+            const weekValue = weekInput.value;
+            if (!weekValue) {
+                return;
+            }
+
+            e.preventDefault();
+
+            try {
+                const response = await fetch('{{ route("storeowner.ajax.check-employee-in-leave") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken || '',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ weeknumber: weekValue })
+                });
+
+                if (!response.ok) {
+                    skipLeaveCheck = true;
+                    rosterForm.submit();
+                    return;
+                }
+
+                const data = await response.json();
+                const leaves = data.leaves || [];
+
+                if (leaves.length === 0) {
+                    skipLeaveCheck = true;
+                    rosterForm.submit();
+                    return;
+                }
+
+                renderLeaveRows(leaves);
+                openLeaveModal();
+            } catch (error) {
+                skipLeaveCheck = true;
+                rosterForm.submit();
+            }
+        });
+
+        leaveModalClose.addEventListener('click', closeLeaveModal);
+        leaveModalCloseTop.addEventListener('click', closeLeaveModal);
+        leaveModalProceed.addEventListener('click', function () {
+            closeLeaveModal();
+            skipLeaveCheck = true;
+            rosterForm.submit();
         });
     </script>
     @endpush

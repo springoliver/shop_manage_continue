@@ -44,6 +44,24 @@
                 </div>
             </div>
 
+            <!-- Store Type -->
+            <div class="flex items-start gap-4">
+                <label for="typeid" class="w-1/4 pt-2 text-sm font-medium text-gray-700 text-end pr-5">
+                    Store Type<span class="text-red-500"> *</span>
+                </label>
+                <div class="w-3/4">
+                    <select id="typeid" name="typeid" required class="block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="">Select Store Type</option>
+                        @foreach($storeTypes as $storeType)
+                            <option value="{{ $storeType->typeid }}" {{ (string) old('typeid') === (string) $storeType->typeid ? 'selected' : '' }}>
+                                {{ $storeType->store_type }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <x-input-error :messages="$errors->get('typeid')" class="mt-2" />
+                </div>
+            </div>
+
             <!-- Store Email -->
             <div class="flex items-start gap-4">
                 <label for="store_email" class="w-1/4 pt-2 text-sm font-medium text-gray-700 text-end pr-5">

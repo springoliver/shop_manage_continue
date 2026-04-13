@@ -394,15 +394,19 @@ class AjaxController extends Controller
             ->where('hr.storeid', $storeid)
             ->where('hr.status', 'Approved')
             ->where('e.status', '!=', 'Deactivate')
-            ->whereBetween('hr.from_date', [$weekStart->format('Y-m-d'), $weekEnd->format('Y-m-d')])
-            ->orWhere(function($q) use ($storeid, $weekStart, $weekEnd) {
-                $q->where('hr.storeid', $storeid)
-                  ->where('hr.status', 'Approved')
-                  ->whereBetween('hr.to_date', [$weekStart->format('Y-m-d'), $weekEnd->format('Y-m-d')]);
-            })
+            // Overlap check: leave period intersects selected week.
+            ->whereDate('hr.from_date', '<=', $weekEnd->format('Y-m-d'))
+            ->whereDate('hr.to_date', '>=', $weekStart->format('Y-m-d'))
+            ->orderBy('e.firstname')
+            ->orderBy('e.lastname')
             ->get();
-        
-        return view('storeowner.roster.partials.modal_leave', compact('leaves', 'weeknumber'))->render();
+
+        return Response::json([
+            'weeknumber' => $weeknumber,
+            'week_start' => $weekStart->format('Y-m-d'),
+            'week_end' => $weekEnd->format('Y-m-d'),
+            'leaves' => $leaves,
+        ]);
     }
 
     /**

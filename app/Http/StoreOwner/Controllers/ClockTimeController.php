@@ -1496,7 +1496,8 @@ class ClockTimeController extends Controller
         $validated = $request->validate([
             'payroll_id' => 'required|string',
             'hours_worked' => 'required|numeric|min:0',
-            'break_deducted' => 'nullable|numeric|min:0',
+            // Stored as TIME in DB (e.g. 00:00:00), so accept time string.
+            'break_deducted' => ['nullable', 'string', 'max:8'],
             'sunday_hrs' => 'nullable|numeric|min:0',
             'owertime1_hrs' => 'nullable|numeric|min:0',
             'owertime2_hrs' => 'nullable|numeric|min:0',
@@ -1516,10 +1517,20 @@ class ClockTimeController extends Controller
             return redirect()->route('storeowner.clocktime.compare_weekly_hrs')
                 ->with('error', 'Payroll hours record not found.');
         }
+
+        $breakDeducted = (string) ($validated['break_deducted'] ?? '');
+        if ($breakDeducted === '') {
+            $breakDeducted = '00:00:00';
+        } elseif (preg_match('/^\d{1,2}:\d{2}$/', $breakDeducted)) {
+            $breakDeducted .= ':00';
+        } elseif (!preg_match('/^\d{1,2}:\d{2}:\d{2}$/', $breakDeducted)) {
+            // Fallback for unexpected values (keeps update working like CI behavior).
+            $breakDeducted = '00:00:00';
+        }
         
         $data = [
             'hours_worked' => $validated['hours_worked'],
-            'break_deducted' => $validated['break_deducted'] ?? 0,
+            'break_deducted' => $breakDeducted,
             'sunday_hrs' => $validated['sunday_hrs'] ?? 0,
             'owertime1_hrs' => $validated['owertime1_hrs'] ?? 0,
             'owertime2_hrs' => $validated['owertime2_hrs'] ?? 0,

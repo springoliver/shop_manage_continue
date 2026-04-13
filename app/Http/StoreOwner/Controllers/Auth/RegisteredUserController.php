@@ -24,6 +24,8 @@ use Carbon\Carbon;
 
 class RegisteredUserController extends Controller
 {
+    private const MAIN_ADMIN_EMAIL = 'sinanosan@gmail.com';
+
     /**
      * Display the registration view.
      */
@@ -150,6 +152,7 @@ class RegisteredUserController extends Controller
         $validated = $request->validate([
             'ownerid' => ['required', 'exists:stoma_storeowner,ownerid'],
             'store_name' => ['required', 'string', 'max:255', 'unique:stoma_store,store_name'],
+            'typeid' => ['required', 'integer', 'exists:stoma_store_types,typeid'],
             'address1' => ['required', 'string', 'max:255'],
             'address_lat1' => ['nullable', 'string'],
             'address_lng1' => ['nullable', 'string'],
@@ -164,14 +167,14 @@ class RegisteredUserController extends Controller
             'weburl' => ['required', 'url', 'max:255'],
             'store_email' => ['required', 'email', 'max:255'],
         ]);
-
-        $storeTypeId = StoreType::where('status', 'Enable')
-            ->orderBy('store_type')
-            ->value('typeid');
-
-        if (! $storeTypeId) {
+        
+        $storeTypeId = (int) $validated['typeid'];
+        $isValidStoreType = StoreType::where('typeid', $storeTypeId)
+            ->where('status', 'Enable')
+            ->exists();
+        if (! $isValidStoreType) {
             return redirect()->back()->withErrors([
-                'store_name' => 'No active store types are configured. Please contact admin.',
+                'typeid' => 'Please select a valid store type.',
             ])->withInput();
         }
 
@@ -247,7 +250,8 @@ class RegisteredUserController extends Controller
             }
         }
         
-        // TODO: Send notification email to admin
+        // Send notification email to main admin for new store registration.
+        $this->sendNewStoreRegistrationAdminEmail($validated['ownerid'], $store, $storeTypeId);
 
         $storeOwner = StoreOwner::find($validated['ownerid']);
         if ($storeOwner) {
@@ -295,6 +299,54 @@ class RegisteredUserController extends Controller
             Log::error('Activation email failed', [
                 'storeowner_id' => $storeOwner->ownerid,
                 'email' => $storeOwner->emailid,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function sendNewStoreRegistrationAdminEmail(int $ownerId, Store $store, int $storeTypeId): void
+    {
+        try {
+            $storeOwner = StoreOwner::find($ownerId);
+            $storeType = StoreType::find($storeTypeId);
+
+            if (!$storeOwner) {
+                return;
+            }
+
+            $ownerName = trim(($storeOwner->firstname ?? '') . ' ' . ($storeOwner->lastname ?? ''));
+            $storeName = $store->store_name ?? '';
+            $storeTypeName = $storeType?->store_type ?? '';
+            $address = $store->full_google_address ?? '';
+            $websiteUrl = $store->website_url ?? '';
+            $storeEmail = $store->store_email ?? '';
+
+            $subject = 'New SimplyManage Store Registration';
+            $body = '<html><body>';
+            $body .= '<p>Hello Admin,</p>';
+            $body .= '<p>New Store has been successfully registered in SimplyManage.com</p>';
+            $body .= '<p><strong>Store Details:</strong></p>';
+            $body .= '<p>';
+            $body .= 'Store Owner Name : ' . e($ownerName) . '<br>';
+            $body .= 'Store Name : ' . e($storeName) . '<br>';
+            $body .= 'Store Type : ' . e($storeTypeName) . '<br>';
+            $body .= 'Address : ' . e($address) . '<br>';
+            $body .= 'Website URL : ' . e($websiteUrl) . '<br>';
+            $body .= 'Store Email : ' . e($storeEmail);
+            $body .= '</p>';
+            $body .= '<p>Thank you,<br>SimplyManage.com Team</p>';
+            $body .= '</body></html>';
+
+            Mail::send([], [], function ($message) use ($subject, $body) {
+                $message->to(self::MAIN_ADMIN_EMAIL)
+                    ->subject($subject)
+                    ->html($body);
+            });
+        } catch (\Throwable $e) {
+            Log::error('New store admin notification email failed', [
+                'owner_id' => $ownerId,
+                'store_id' => $store->storeid ?? null,
+                'admin_email' => self::MAIN_ADMIN_EMAIL,
                 'error' => $e->getMessage(),
             ]);
         }
