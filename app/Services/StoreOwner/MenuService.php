@@ -339,19 +339,14 @@ class MenuService
 
         $submenu = [];
 
-        if (Route::has('storeowner.storecatalog.index')) {
+        if (Route::has('storeowner.storecatalog.settings')) {
             $submenu[] = [
-                'label' => 'Products',
-                'route' => 'storeowner.storecatalog.index',
+                'label' => 'Group',
+                'route' => 'storeowner.storecatalog.settings',
                 'enabled' => true,
-                'icon' => '<i class="fa fa-gift"></i>',
+                'icon' => '<i class="fa fa-cog"></i>',
                 'type' => 'link',
-                'active_patterns' => [
-                    'storeowner.storecatalog.index',
-                    'storeowner.storecatalog.add',
-                    'storeowner.storecatalog.edit',
-                    'storeowner.storecatalog.by-category',
-                ],
+                'active_patterns' => ['storeowner.storecatalog.settings'],
             ];
         }
 
@@ -366,14 +361,19 @@ class MenuService
             ];
         }
 
-        if (Route::has('storeowner.storecatalog.settings')) {
+        if (Route::has('storeowner.storecatalog.index')) {
             $submenu[] = [
-                'label' => 'Settings',
-                'route' => 'storeowner.storecatalog.settings',
+                'label' => 'Products',
+                'route' => 'storeowner.storecatalog.index',
                 'enabled' => true,
-                'icon' => '<i class="fa fa-cog"></i>',
+                'icon' => '<i class="fa fa-gift"></i>',
                 'type' => 'link',
-                'active_patterns' => ['storeowner.storecatalog.settings'],
+                'active_patterns' => [
+                    'storeowner.storecatalog.index',
+                    'storeowner.storecatalog.add',
+                    'storeowner.storecatalog.edit',
+                    'storeowner.storecatalog.by-category',
+                ],
             ];
         }
 

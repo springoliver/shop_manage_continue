@@ -37,7 +37,9 @@
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="name" style="cursor: pointer;">Name <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span></th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="group" style="cursor: pointer;">Group <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span></th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="category" style="cursor: pointer;">Category <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span></th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="income-sum" style="cursor: pointer;">Product Cost <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span></th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="price" style="cursor: pointer;">Price <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span></th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="profit-percentage" style="cursor: pointer;">Profit % <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span></th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase sortable" data-sort="status" style="cursor: pointer;">Status <span class="sort-indicator"><i class="fas fa-sort text-gray-400"></i></span></th>
                     <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
                 </tr>
@@ -49,7 +51,9 @@
                         data-name="{{ strtolower($product->catalog_product_name ?? '') }}"
                         data-group="{{ strtolower($product->catalog_product_group_name ?? '') }}"
                         data-category="{{ strtolower($product->catalog_product_category_name ?? '') }}"
+                        data-income-sum="{{ strtolower((string) ($product->income_sum ?? '0')) }}"
                         data-price="{{ strtolower($product->catalog_product_price ?? '') }}"
+                        data-profit-percentage="{{ strtolower((string) ($product->profit_percentage ?? '0')) }}"
                         data-status="{{ strtolower($product->catalog_product_status ?? '') }}">
                         <td class="px-4 py-3">{{ $product->catalog_product_name }}</td>
                         <td class="px-4 py-3">{{ $product->catalog_product_group_name }}</td>
@@ -59,7 +63,9 @@
                                 {{ $product->catalog_product_category_name }}
                             </a>
                         </td>
+                        <td class="px-4 py-3">{{ $product->income_sum ?? '0' }}</td>
                         <td class="px-4 py-3">{{ $product->catalog_product_price }}</td>
+                        <td class="px-4 py-3">{{ $product->profit_percentage ?? '0' }}</td>
                         <td class="px-4 py-3">
                             <button type="button" onclick="window.openStatusModal('confirm-status{{ $product->catalog_product_id }}')"
                                 class="px-2 py-1 text-xs font-semibold rounded-full {{ $product->catalog_product_status === 'Enable' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
@@ -83,7 +89,7 @@
                     </tr>
                 @empty
                     <tr id="noCatalogRow">
-                        <td colspan="6" class="px-4 py-6 text-center text-gray-500">No catalog products found.</td>
+                        <td colspan="8" class="px-4 py-6 text-center text-gray-500">No catalog products found.</td>
                     </tr>
                 @endforelse
             </tbody>
