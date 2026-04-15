@@ -68,6 +68,7 @@ class MenuService
             // Dynamic module-based menus
             $this->buildPointOfSaleMenu($installedModuleNames),
             $this->buildSuppliersMenu($installedModuleNames),
+            $this->buildCatalogMenu($installedModuleNames),
             $this->buildPurchaseOrderMenu($installedModuleNames),
         ];
         
@@ -93,6 +94,7 @@ class MenuService
                 'enabled' => true,
                 'icon' => '<i class="fa fa-user"></i>',
                 'type' => 'link',
+                'active_patterns' => ['storeowner.employee.'],
             ];
         }
         
@@ -104,6 +106,7 @@ class MenuService
                 'enabled' => true,
                 'icon' => '<i class="fa fa-user"></i>',
                 'type' => 'link',
+                'active_patterns' => ['storeowner.employeepayroll.'],
             ];
         }
         
@@ -115,6 +118,7 @@ class MenuService
                 'enabled' => true,
                 'icon' => '<i class="fa fa-calendar"></i>',
                 'type' => 'link',
+                'active_patterns' => ['storeowner.roster.'],
             ];
         }
         
@@ -127,6 +131,8 @@ class MenuService
                     'enabled' => true,
                     'icon' => '<i class="fa fa-clock"></i>',
                     'type' => 'link',
+                    'active_patterns' => ['storeowner.clocktime.'],
+                    'exclude_patterns' => ['storeowner.clocktime.employee_holidays'],
                 ];
             }
             
@@ -138,6 +144,7 @@ class MenuService
                     'enabled' => true,
                     'icon' => '<i class="fa fa-clock"></i>',
                     'type' => 'link',
+                'active_patterns' => ['storeowner.clocktime.employee_holidays'],
                 ];
             }
         }
@@ -150,6 +157,7 @@ class MenuService
                 'enabled' => true,
                 'icon' => '<i class="fa fa-file"></i>',
                 'type' => 'link',
+                'active_patterns' => ['storeowner.document.'],
             ];
         }
         
@@ -161,6 +169,7 @@ class MenuService
                 'enabled' => true,
                 'icon' => '<i class="fa fa-user"></i>',
                 'type' => 'link',
+                'active_patterns' => ['storeowner.resignation.'],
             ];
         }
         
@@ -172,6 +181,7 @@ class MenuService
                 'enabled' => true,
                 'icon' => '<i class="fa fa-calendar"></i>',
                 'type' => 'link',
+                'active_patterns' => ['storeowner.holidayrequest.'],
             ];
         }
         
@@ -183,6 +193,7 @@ class MenuService
                 'enabled' => true,
                 'icon' => '<i class="fa fa-file-text"></i>',
                 'type' => 'link',
+                'active_patterns' => ['storeowner.employeereviews.'],
             ];
         }
         
@@ -284,6 +295,8 @@ class MenuService
                 'enabled' => true,
                 'icon' => '<i class="fa fa-bar-chart"></i>',
                 'type' => 'link',
+                'active_patterns' => ['storeowner.suppliers.'],
+                'exclude_patterns' => ['storeowner.suppliers.settings'],
             ];
         }
         
@@ -295,9 +308,10 @@ class MenuService
                 'enabled' => true,
                 'icon' => '<i class="fa fa-bar-chart"></i>',
                 'type' => 'link',
+                'active_patterns' => ['storeowner.products.'],
             ];
         }
-        
+
         if (count($submenu) === 0) {
             return null;
         }
@@ -306,6 +320,71 @@ class MenuService
             'label' => 'Suppliers',
             'enabled' => true,
             'icon' => '<i class="fa fa-suitcase"></i>',
+            'type' => 'submenu',
+            'submenu' => $submenu,
+        ];
+    }
+
+    /**
+     * Build Catalog menu (if Catalog Products module installed).
+     *
+     * @param array $installedModuleNames
+     * @return array|null
+     */
+    protected function buildCatalogMenu(array $installedModuleNames): ?array
+    {
+        if (!in_array('Catalog Products', $installedModuleNames)) {
+            return null;
+        }
+
+        $submenu = [];
+
+        if (Route::has('storeowner.storecatalog.index')) {
+            $submenu[] = [
+                'label' => 'Products',
+                'route' => 'storeowner.storecatalog.index',
+                'enabled' => true,
+                'icon' => '<i class="fa fa-gift"></i>',
+                'type' => 'link',
+                'active_patterns' => [
+                    'storeowner.storecatalog.index',
+                    'storeowner.storecatalog.add',
+                    'storeowner.storecatalog.edit',
+                    'storeowner.storecatalog.by-category',
+                ],
+            ];
+        }
+
+        if (Route::has('storeowner.storecatalog.categories')) {
+            $submenu[] = [
+                'label' => 'Categories',
+                'route' => 'storeowner.storecatalog.categories',
+                'enabled' => true,
+                'icon' => '<i class="fa fa-tags"></i>',
+                'type' => 'link',
+                'active_patterns' => ['storeowner.storecatalog.categories'],
+            ];
+        }
+
+        if (Route::has('storeowner.storecatalog.settings')) {
+            $submenu[] = [
+                'label' => 'Settings',
+                'route' => 'storeowner.storecatalog.settings',
+                'enabled' => true,
+                'icon' => '<i class="fa fa-cog"></i>',
+                'type' => 'link',
+                'active_patterns' => ['storeowner.storecatalog.settings'],
+            ];
+        }
+
+        if (count($submenu) === 0) {
+            return null;
+        }
+
+        return [
+            'label' => 'Catalog',
+            'enabled' => true,
+            'icon' => '<i class="fa fa-cutlery"></i>',
             'type' => 'submenu',
             'submenu' => $submenu,
         ];

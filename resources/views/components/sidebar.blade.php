@@ -7,13 +7,37 @@
     $activeRoute = $activeRoute ?? (request()->route() ? request()->route()->getName() : null);
     
     // Helper function to check if a route or its submenu is active
-    $isActive = function($item) use ($activeRoute) {
+    $matchesItemRoute = function($item) use ($activeRoute) {
+        if (!$activeRoute) {
+            return false;
+        }
+        if (isset($item['exclude_patterns']) && is_array($item['exclude_patterns'])) {
+            foreach ($item['exclude_patterns'] as $pattern) {
+                if (str_starts_with($activeRoute, $pattern)) {
+                    return false;
+                }
+            }
+        }
         if (isset($item['route']) && $activeRoute === $item['route']) {
+            return true;
+        }
+        if (isset($item['active_patterns']) && is_array($item['active_patterns'])) {
+            foreach ($item['active_patterns'] as $pattern) {
+                if (str_starts_with($activeRoute, $pattern)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    $isActive = function($item) use ($activeRoute, $matchesItemRoute) {
+        if ($matchesItemRoute($item)) {
             return true;
         }
         if (isset($item['submenu'])) {
             foreach ($item['submenu'] as $subitem) {
-                if (isset($subitem['route']) && $activeRoute === $subitem['route']) {
+                if ($matchesItemRoute($subitem)) {
                     return true;
                 }
             }
@@ -21,7 +45,7 @@
         // Also check for 'children' key (backward compatibility)
         if (isset($item['children'])) {
             foreach ($item['children'] as $subitem) {
-                if (isset($subitem['route']) && $activeRoute === $subitem['route']) {
+                if ($matchesItemRoute($subitem)) {
                     return true;
                 }
             }
@@ -30,10 +54,10 @@
     };
     
     // Helper function to check if submenu should be open
-    $isSubmenuOpen = function($item) use ($activeRoute) {
+    $isSubmenuOpen = function($item) use ($activeRoute, $matchesItemRoute) {
         if (isset($item['submenu'])) {
             foreach ($item['submenu'] as $subitem) {
-                if (isset($subitem['route']) && $activeRoute === $subitem['route']) {
+                if ($matchesItemRoute($subitem)) {
                     return true;
                 }
             }
@@ -41,7 +65,7 @@
         // Also check for 'children' key (backward compatibility)
         if (isset($item['children'])) {
             foreach ($item['children'] as $subitem) {
-                if (isset($subitem['route']) && $activeRoute === $subitem['route']) {
+                if ($matchesItemRoute($subitem)) {
                     return true;
                 }
             }
@@ -118,7 +142,7 @@
                                     @if($routeExists || !isset($subitem['route']))
                                         <a
                                             href="{{ $routeUrl }}"
-                                            class="flex items-center px-4 py-2 rounded-md text-sm text-gray-400 {{ isset($subitem['route']) && $activeRoute === $subitem['route'] ? 'bg-gray-900 text-white' : 'hover:bg-gray-700 hover:text-white' }}"
+                                            class="flex items-center px-4 py-2 rounded-md text-sm text-gray-400 {{ $matchesItemRoute($subitem) ? 'bg-gray-900 text-white' : 'hover:bg-gray-700 hover:text-white' }}"
                                         >
                                             {!! $subitem['icon'] !!}
                                             <span class="ml-3">{{ $subitem['label'] }}</span>
@@ -143,7 +167,7 @@
                     @if($routeExists || !isset($item['route']))
                         <a
                             href="{{ $routeUrl }}"
-                            class="flex items-center px-4 py-2 rounded-md text-gray-400 {{ isset($item['route']) && $activeRoute === $item['route'] ? 'bg-gray-900 text-white' : 'hover:bg-gray-700 hover:text-white' }}"
+                            class="flex items-center px-4 py-2 rounded-md text-gray-400 {{ $matchesItemRoute($item) ? 'bg-gray-900 text-white' : 'hover:bg-gray-700 hover:text-white' }}"
                         >
                             {!! $item['icon'] !!}
                             <span class="ml-3" x-show="sidebarOpen" x-transition>{{ $item['label'] }}</span>

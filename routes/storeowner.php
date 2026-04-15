@@ -24,6 +24,7 @@ use App\Http\StoreOwner\Controllers\PosSettingController as StoreOwnerPosSetting
 use App\Http\StoreOwner\Controllers\SupplierSettingController as StoreOwnerSupplierSettingController;
 use App\Http\StoreOwner\Controllers\SupplierController as StoreOwnerSupplierController;
 use App\Http\StoreOwner\Controllers\ProductController as StoreOwnerProductController;
+use App\Http\StoreOwner\Controllers\StoreCatalogController as StoreOwnerStoreCatalogController;
 use App\Http\StoreOwner\Controllers\OrderingSettingController as StoreOwnerOrderingSettingController;
 use App\Http\StoreOwner\Controllers\OrderingController as StoreOwnerOrderingController;
 use App\Http\StoreOwner\Controllers\AjaxController as StoreOwnerAjaxController;
@@ -352,6 +353,37 @@ Route::name('storeowner.')->group(function () {
         Route::delete('products/{productid}', [StoreOwnerProductController::class, 'destroy'])->name('products.destroy');
         Route::post('products/change_product_status', [StoreOwnerProductController::class, 'changeStatus'])->name('products.change-status');
         Route::post('products/change_product_price', [StoreOwnerProductController::class, 'changePrice'])->name('products.change-price');
+
+        // Store Catalog routes (CI storecatalog)
+        Route::get('storecatalog', [StoreOwnerStoreCatalogController::class, 'index'])->name('storecatalog.index');
+        Route::get('storecatalog/by_category/{catalog_product_categoryid}', [StoreOwnerStoreCatalogController::class, 'byCategory'])->name('storecatalog.by-category');
+        Route::get('storecatalog/add', [StoreOwnerStoreCatalogController::class, 'add'])->name('storecatalog.add');
+        Route::get('storecatalog/{catalog_product_id}/edit', [StoreOwnerStoreCatalogController::class, 'edit'])->name('storecatalog.edit');
+        Route::post('storecatalog/update', [StoreOwnerStoreCatalogController::class, 'update'])->name('storecatalog.update');
+        Route::delete('storecatalog/{catalog_product_id}', [StoreOwnerStoreCatalogController::class, 'destroy'])->name('storecatalog.destroy');
+        Route::post('storecatalog/change_product_status', [StoreOwnerStoreCatalogController::class, 'changeProductStatus'])->name('storecatalog.change-status');
+
+        // Store Catalog settings/categories
+        Route::get('storecatalog/settings', [StoreOwnerStoreCatalogController::class, 'settings'])->name('storecatalog.settings');
+        Route::post('storecatalog/settings', [StoreOwnerStoreCatalogController::class, 'updateSettings'])->name('storecatalog.settings.update');
+        Route::get('storecatalog/categories', [StoreOwnerStoreCatalogController::class, 'categories'])->name('storecatalog.categories');
+        Route::post('storecatalog/categories', [StoreOwnerStoreCatalogController::class, 'updateCategory'])->name('storecatalog.categories.update');
+        Route::post('storecatalog/change_category_sell_status', [StoreOwnerStoreCatalogController::class, 'changeCategorySellStatus'])->name('storecatalog.categories.change-status');
+        Route::delete('storecatalog/categories/{catalog_product_categoryid}', [StoreOwnerStoreCatalogController::class, 'deleteCategory'])->name('storecatalog.categories.delete');
+        Route::get('storecatalog/group_categories', [StoreOwnerStoreCatalogController::class, 'groupCategoriesList'])->name('storecatalog.group-categories');
+        Route::get('storecatalog/addons', [StoreOwnerStoreCatalogController::class, 'addons'])->name('storecatalog.addons');
+        Route::post('storecatalog/update_addon', [StoreOwnerStoreCatalogController::class, 'updateAddon'])->name('storecatalog.update-addon');
+        Route::post('storecatalog/update_addon_status', [StoreOwnerStoreCatalogController::class, 'changeAddonStatus'])->name('storecatalog.addons.change-status');
+        Route::delete('storecatalog/addons/{addonid}', [StoreOwnerStoreCatalogController::class, 'deleteAddon'])->name('storecatalog.addons.delete');
+        Route::get('storecatalog/modifiers', [StoreOwnerStoreCatalogController::class, 'modifiers'])->name('storecatalog.modifiers');
+        Route::post('storecatalog/update_modifier', [StoreOwnerStoreCatalogController::class, 'updateModifier'])->name('storecatalog.update-modifier');
+        Route::post('storecatalog/update_modifier_status', [StoreOwnerStoreCatalogController::class, 'changeModifierStatus'])->name('storecatalog.modifiers.change-status');
+        Route::delete('storecatalog/modifiers/{modifier_id}', [StoreOwnerStoreCatalogController::class, 'deleteModifier'])->name('storecatalog.modifiers.delete');
+        Route::get('storecatalog/payment_methods', [StoreOwnerStoreCatalogController::class, 'paymentMethods'])->name('storecatalog.payment-methods');
+        Route::post('storecatalog/update_payment_method', [StoreOwnerStoreCatalogController::class, 'updatePaymentMethod'])->name('storecatalog.update-payment-method');
+        Route::post('storecatalog/update_payment_method_status', [StoreOwnerStoreCatalogController::class, 'changePaymentMethodStatus'])->name('storecatalog.payment-methods.change-status');
+        Route::post('storecatalog/update_payment_method_mode', [StoreOwnerStoreCatalogController::class, 'changePaymentMethodMode'])->name('storecatalog.payment-methods.change-mode');
+        Route::delete('storecatalog/payment_methods/{payment_methodid}', [StoreOwnerStoreCatalogController::class, 'deletePaymentMethod'])->name('storecatalog.payment-methods.delete');
         
         // Ordering Settings routes
         Route::get('ordering/settings', [StoreOwnerOrderingSettingController::class, 'settings'])->name('ordering.settings');
