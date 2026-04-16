@@ -37,15 +37,15 @@
     </div>
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Product Price</label>
-        <input name="catalog_product_price" value="{{ old('catalog_product_price', $catalogProduct->catalog_product_price ?? '') }}" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+        <input id="catalogProductPriceInput" name="catalog_product_price" value="{{ old('catalog_product_price', $catalogProduct->catalog_product_price ?? '') }}" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
     </div>
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Income Sum</label>
-        <input name="income_sum" value="{{ old('income_sum', $catalogProduct->income_sum ?? '') }}" class="w-full border border-gray-300 rounded-md px-3 py-2">
+        <input id="incomeSumInput" name="income_sum" value="{{ old('income_sum', $catalogProduct->income_sum ?? '') }}" class="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50" readonly>
     </div>
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Profit %</label>
-        <input name="profit_percentage" value="{{ old('profit_percentage', $catalogProduct->profit_percentage ?? '') }}" class="w-full border border-gray-300 rounded-md px-3 py-2">
+        <input id="profitPercentageInput" name="profit_percentage" value="{{ old('profit_percentage', $catalogProduct->profit_percentage ?? '') }}" class="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50" readonly>
     </div>
     <div class="md:col-span-2">
         <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -112,8 +112,46 @@
 
         const rowTemplate = `@php($options = '<option value="">Select Store Product</option>')@foreach ($storeProducts as $storeProduct)@php($options .= '<option value="' . e($storeProduct->productid) . '">' . e($storeProduct->product_name) . '</option>')@endforeach<div class="ingredient-row grid grid-cols-1 md:grid-cols-12 gap-2"><select name="recipe_store_product_id[]" class="md:col-span-6 border border-gray-300 rounded-md px-3 py-2">{!! $options !!}</select><input name="recipe_percentage[]" placeholder="%" class="md:col-span-2 border border-gray-300 rounded-md px-3 py-2"><input name="recipe_price[]" placeholder="Price" class="md:col-span-3 border border-gray-300 rounded-md px-3 py-2"><button type="button" class="removeIngredient md:col-span-1 px-2 py-2 bg-red-100 text-red-700 rounded">X</button></div>`;
 
+        const productPriceInput = document.getElementById('catalogProductPriceInput');
+        const incomeSumInput = document.getElementById('incomeSumInput');
+        const profitPercentageInput = document.getElementById('profitPercentageInput');
+        const ingredientsLimit = {{ (int) ($ingredientsLimit ?? 30) }};
+
+        const parseNumber = (value) => {
+            const cleaned = String(value ?? '').replace(/,/g, '').trim();
+            const parsed = parseFloat(cleaned);
+            return Number.isFinite(parsed) ? parsed : 0;
+        };
+
+        const formatNumber = (value) => {
+            return (Math.round(value * 100) / 100).toFixed(2).replace(/\.00$/, '');
+        };
+
+        const recalculateIncomeAndProfit = () => {
+            if (!incomeSumInput || !profitPercentageInput) return;
+
+            const productPrice = parseNumber(productPriceInput?.value);
+            const recipePriceInputs = rowsEl.querySelectorAll('input[name="recipe_price[]"]');
+            let totalRecipeCost = 0;
+            recipePriceInputs.forEach((input) => {
+                totalRecipeCost += parseNumber(input.value);
+            });
+
+            const incomeSum = productPrice - totalRecipeCost;
+            const profitPercentage = productPrice > 0 ? (incomeSum / productPrice) * 100 : 0;
+
+            incomeSumInput.value = formatNumber(incomeSum);
+            profitPercentageInput.value = formatNumber(profitPercentage);
+        };
+
         addBtn.addEventListener('click', () => {
+            const currentRows = rowsEl.querySelectorAll('.ingredient-row').length;
+            if (currentRows >= ingredientsLimit) {
+                alert(`You can add up to ${ingredientsLimit} ingredients.`);
+                return;
+            }
             rowsEl.insertAdjacentHTML('beforeend', rowTemplate);
+            recalculateIncomeAndProfit();
         });
 
         rowsEl.addEventListener('click', (event) => {
@@ -121,6 +159,17 @@
             if (!btn) return;
             const row = btn.closest('.ingredient-row');
             if (row) row.remove();
+            recalculateIncomeAndProfit();
         });
+
+        rowsEl.addEventListener('input', (event) => {
+            const isRecipePriceField = event.target.matches('input[name="recipe_price[]"]');
+            if (isRecipePriceField) {
+                recalculateIncomeAndProfit();
+            }
+        });
+
+        productPriceInput?.addEventListener('input', recalculateIncomeAndProfit);
+        recalculateIncomeAndProfit();
     })();
 </script>
