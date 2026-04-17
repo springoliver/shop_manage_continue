@@ -2,6 +2,8 @@
     $editing = isset($catalogProduct);
     $selectedGroup = old('catalog_product_groupid', $catalogProduct->catalog_product_groupid ?? '');
     $selectedCategory = old('catalog_product_categoryid', $catalogProduct->catalog_product_categoryid ?? '');
+    $hasGroups = isset($groups) && count($groups) > 0;
+    $hasCategories = isset($categories) && count($categories) > 0;
 @endphp
 
 @if ($editing)
@@ -11,25 +13,41 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Product Group</label>
-        <select name="catalog_product_groupid" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+        <select id="catalogProductGroupSelect" name="catalog_product_groupid" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
             <option value="">Select Group</option>
             @foreach ($groups as $group)
                 <option value="{{ $group->catalog_product_groupid }}" @selected((string) $selectedGroup === (string) $group->catalog_product_groupid)>
                     {{ $group->catalog_product_group_name }}
                 </option>
             @endforeach
+            @if (!$hasGroups)
+                <option value="__add_group__">Add Group</option>
+            @endif
         </select>
+        @if (!$hasGroups)
+            <p class="mt-1 text-xs text-red-600">
+                No group found. Please <a href="{{ route('storeowner.storecatalog.settings') }}" class="underline">Add Group</a> before adding product.
+            </p>
+        @endif
     </div>
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-        <select name="catalog_product_categoryid" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+        <select id="catalogProductCategorySelect" name="catalog_product_categoryid" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
             <option value="">Select Category</option>
             @foreach ($categories as $category)
                 <option value="{{ $category->catalog_product_categoryid }}" @selected((string) $selectedCategory === (string) $category->catalog_product_categoryid)>
                     {{ $category->catalog_product_category_name }}
                 </option>
             @endforeach
+            @if (!$hasCategories)
+                <option value="__add_category__">Add Category</option>
+            @endif
         </select>
+        @if (!$hasCategories)
+            <p class="mt-1 text-xs text-red-600">
+                No category found. Please <a href="{{ route('storeowner.storecatalog.categories') }}" class="underline">Add Category</a> before adding product.
+            </p>
+        @endif
     </div>
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
@@ -106,6 +124,29 @@
 
 <script>
     (() => {
+        const groupSelect = document.getElementById('catalogProductGroupSelect');
+        const categorySelect = document.getElementById('catalogProductCategorySelect');
+        const form = groupSelect?.closest('form');
+
+        groupSelect?.addEventListener('change', () => {
+            if (groupSelect.value !== '__add_group__') return;
+            window.location.href = @json(route('storeowner.storecatalog.settings'));
+        });
+
+        categorySelect?.addEventListener('change', () => {
+            if (categorySelect.value !== '__add_category__') return;
+            window.location.href = @json(route('storeowner.storecatalog.categories'));
+        });
+
+        form?.addEventListener('submit', (event) => {
+            const invalidGroup = !groupSelect || groupSelect.value === '' || ({{ $hasGroups ? 'false' : 'true' }} && groupSelect.value === '__add_group__');
+            const invalidCategory = !categorySelect || categorySelect.value === '' || ({{ $hasCategories ? 'false' : 'true' }} && categorySelect.value === '__add_category__');
+            if (!invalidGroup && !invalidCategory) return;
+
+            event.preventDefault();
+            alert('Please add/select Product Group and Category before saving product.');
+        });
+
         const addBtn = document.getElementById('addIngredientRow');
         const rowsEl = document.getElementById('ingredientRows');
         if (!addBtn || !rowsEl) return;
