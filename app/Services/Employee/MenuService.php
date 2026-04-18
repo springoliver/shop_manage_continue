@@ -363,6 +363,50 @@ class MenuService
                 'submenu' => $suppliersSubmenu,
             ];
         }
+
+        // Catalog submenu - check module access AND URL permission
+        if (isset($moduleAccessMap['Catalog Products']) && $moduleAccessMap['Catalog Products'] != 'None') {
+            $catalogSubmenu = [];
+
+            if (Route::has('storeowner.storecatalog.settings') && $this->hasUrlPermission('storecatalog/settings')) {
+                $catalogSubmenu[] = [
+                    'label' => 'Group',
+                    'route' => 'storeowner.storecatalog.settings',
+                    'enabled' => true,
+                    'icon' => '<i class="fa fa-cog"></i>',
+                    'type' => 'link',
+                ];
+            }
+
+            if (Route::has('storeowner.storecatalog.categories') && $this->hasUrlPermission('storecatalog/categories')) {
+                $catalogSubmenu[] = [
+                    'label' => 'Categories',
+                    'route' => 'storeowner.storecatalog.categories',
+                    'enabled' => true,
+                    'icon' => '<i class="fa fa-tags"></i>',
+                    'type' => 'link',
+                ];
+            }
+
+            if (Route::has('storeowner.storecatalog.index') && $this->hasUrlPermission('storecatalog')) {
+                $catalogSubmenu[] = [
+                    'label' => 'Products',
+                    'route' => 'storeowner.storecatalog.index',
+                    'enabled' => true,
+                    'icon' => '<i class="fa fa-gift"></i>',
+                    'type' => 'link',
+                ];
+            }
+            
+            if (!empty($catalogSubmenu)) {
+                $menu[] = [
+                    'label' => 'Catalog',
+                    'icon' => '<i class="fa fa-cutlery"></i>',
+                    'type' => 'submenu',
+                    'submenu' => $catalogSubmenu,
+                ];
+            }
+        }
         
         // Purchase Order submenu - check module access AND URL permission
         if (isset($moduleAccessMap['Ordering']) && $moduleAccessMap['Ordering'] != 'None') {

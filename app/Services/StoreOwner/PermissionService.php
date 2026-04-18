@@ -70,6 +70,13 @@ class PermissionService
             '/^resignation$/',                // resignation index
             '/^resignation\/view/',           // resignation/view
             '/^employeereviews$/',            // employeereviews index
+            '/^storecatalog$/',               // catalog products index
+            '/^storecatalog\/by_category/',   // catalog products by category
+            '/^storecatalog\/categories$/',   // catalog categories (list)
+            '/^storecatalog\/settings$/',     // catalog group/settings (view)
+            '/^storecatalog\/modifiers$/',    // catalog modifiers (list)
+            '/^storecatalog\/addons$/',       // catalog addons (list)
+            '/^storecatalog\/payment_methods$/', // catalog payment methods (list)
         ];
         
         foreach ($viewOnlyPatterns as $pattern) {

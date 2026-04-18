@@ -263,6 +263,38 @@ class RedirectIfNotStoreOwner
         if ($pathLower === 'clocktime') {
             return 'clocktime';
         }
+
+        // Store Catalog (Catalog Products) mappings
+        if ($pathLower === 'storecatalog') {
+            return 'storecatalog';
+        }
+        if ($pathLower === 'storecatalog/add') {
+            return 'storecatalog/add';
+        }
+        if (preg_match('/^storecatalog\/[^\/]+\/edit$/', $pathLower) || $pathLower === 'storecatalog/edit') {
+            return 'storecatalog/edit';
+        }
+        if ($pathLower === 'storecatalog/update' || ($pathLower === 'storecatalog' && $method === 'POST')) {
+            return 'storecatalog/update';
+        }
+        if ($pathLower === 'storecatalog/categories') {
+            return 'storecatalog/categories';
+        }
+        if ($pathLower === 'storecatalog/settings') {
+            return 'storecatalog/settings';
+        }
+        if ($pathLower === 'storecatalog/modifiers') {
+            return 'storecatalog/modifiers';
+        }
+        if ($pathLower === 'storecatalog/addons') {
+            return 'storecatalog/addons';
+        }
+        if ($pathLower === 'storecatalog/payment_methods') {
+            return 'storecatalog/payment_methods';
+        }
+        if (str_starts_with($pathLower, 'storecatalog/by_category')) {
+            return 'storecatalog/by_category';
+        }
         
         // Remove trailing slashes
         $path = rtrim($path, '/');
