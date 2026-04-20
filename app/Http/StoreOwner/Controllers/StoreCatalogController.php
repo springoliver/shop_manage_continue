@@ -21,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
+use Illuminate\Support\Str;
 
 class StoreCatalogController extends Controller
 {
@@ -151,14 +152,16 @@ class StoreCatalogController extends Controller
             'recipe_store_product_id.*' => 'nullable|integer',
             'recipe_percentage.*' => 'nullable|integer|min:0|max:100',
             'recipe_price.*' => 'nullable|string|max:30',
+            'catalog_product_photo' => 'nullable|file|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         $userId = (int) (auth('storeowner')->id() ?? 0);
+        $photoPath = $this->storeCatalogProductPhotoIfPresent($request);
 
         if ($request->filled('catalog_product_id')) {
             $productId = (int) base64_decode((string) $request->input('catalog_product_id'));
             $product = CatalogProduct::where('storeid', $storeid)->findOrFail($productId);
-            $product->update([
+            $updateData = [
                 'catalog_product_groupid' => $validated['catalog_product_groupid'],
                 'catalog_product_categoryid' => $validated['catalog_product_categoryid'],
                 'catalog_product_name' => $validated['catalog_product_name'],
@@ -168,7 +171,11 @@ class StoreCatalogController extends Controller
                 'profit_percentage' => $validated['profit_percentage'] ?? '',
                 'editdate' => now(),
                 'editip' => $this->resolveEditIpValue('stoma_catalog_products', $request),
-            ]);
+            ];
+            if ($photoPath) {
+                $updateData['catalog_product_photo'] = $photoPath;
+            }
+            $product->update($updateData);
 
             CatalogProductIngredient::where('catalog_product_id', $product->catalog_product_id)->delete();
             $this->storeIngredients($request, $product->catalog_product_id, $storeid);
@@ -181,6 +188,7 @@ class StoreCatalogController extends Controller
             'catalog_product_categoryid' => $validated['catalog_product_categoryid'],
             'catalog_product_name' => $validated['catalog_product_name'],
             'catalog_product_desc' => $validated['catalog_product_desc'] ?? '',
+            'catalog_product_photo' => $photoPath ?? '',
             'catalog_product_price' => $validated['catalog_product_price'],
             'catalog_product_status' => 'Enable',
             'income_sum' => $validated['income_sum'] ?? '',
@@ -255,6 +263,65 @@ class StoreCatalogController extends Controller
         $taxSettings = TaxSetting::where('storeid', $storeid)->get();
 
         return view('storeowner.storecatalog.settings', compact('settings', 'groups', 'categories', 'taxSettings'));
+    }
+
+    public function updateGroup(Request $request): RedirectResponse
+    {
+        if ($redirect = $this->checkModuleAccess()) {
+            return $redirect;
+        }
+        if ($redirect = $this->checkCatalogTables()) {
+            return $redirect;
+        }
+
+        $validated = $request->validate([
+            'catalog_product_group_name' => 'required|string|max:255',
+            'catalog_product_groupid' => 'nullable|string',
+        ]);
+
+        $storeid = $this->getStoreId();
+        $userId = (int) (auth('storeowner')->id() ?? 0);
+
+        if (!empty($validated['catalog_product_groupid'])) {
+            $id = (int) base64_decode($validated['catalog_product_groupid']);
+            $group = CatalogProductGroup::where('storeid', $storeid)->findOrFail($id);
+            $group->update([
+                'catalog_product_group_name' => $validated['catalog_product_group_name'],
+                'editdate' => now(),
+                'editip' => $this->resolveEditIpValue('stoma_catalog_product_group', $request),
+                'editby' => $userId,
+            ]);
+            return redirect()->route('storeowner.storecatalog.settings')->with('success', 'Group updated successfully');
+        }
+
+        CatalogProductGroup::create([
+            'catalog_product_group_name' => $validated['catalog_product_group_name'],
+            'storeid' => $storeid,
+            'insertdate' => now(),
+            'insertip' => (string) $request->ip(),
+            'insertby' => $userId,
+            'editdate' => now(),
+            'editip' => $this->resolveEditIpValue('stoma_catalog_product_group', $request),
+            'editby' => $userId,
+        ]);
+
+        return redirect()->route('storeowner.storecatalog.settings')->with('success', 'Group added successfully');
+    }
+
+    public function deleteGroup(string $catalog_product_groupid): RedirectResponse
+    {
+        if ($redirect = $this->checkModuleAccess()) {
+            return $redirect;
+        }
+        if ($redirect = $this->checkCatalogTables()) {
+            return $redirect;
+        }
+
+        $storeid = $this->getStoreId();
+        $id = (int) base64_decode($catalog_product_groupid);
+        $group = CatalogProductGroup::where('storeid', $storeid)->findOrFail($id);
+        $group->delete();
+        return redirect()->route('storeowner.storecatalog.settings')->with('success', 'Group deleted successfully');
     }
 
     public function updateSettings(Request $request): RedirectResponse
@@ -801,5 +868,23 @@ class StoreCatalogController extends Controller
         }
 
         return (int) $ipAsLong;
+    }
+
+    private function storeCatalogProductPhotoIfPresent(Request $request): ?string
+    {
+        if (!$request->hasFile('catalog_product_photo')) {
+            return null;
+        }
+
+        $file = $request->file('catalog_product_photo');
+        if (!$file || !$file->isValid()) {
+            return null;
+        }
+
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+        $name = 'catalog_' . now()->format('Ymd_His') . '_' . Str::random(10) . '.' . $ext;
+
+        $path = $file->storeAs('catalog-products', $name, 'public');
+        return $path ? ('storage/' . $path) : null;
     }
 }

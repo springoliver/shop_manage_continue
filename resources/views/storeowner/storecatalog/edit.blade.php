@@ -11,7 +11,7 @@
         </div>
     @endif
 
-    <form action="{{ route('storeowner.storecatalog.update') }}" method="POST" class="bg-white shadow rounded-lg p-6 space-y-4">
+    <form action="{{ route('storeowner.storecatalog.update') }}" method="POST" enctype="multipart/form-data" class="bg-white shadow rounded-lg p-6 space-y-4">
         @csrf
         @include('storeowner.storecatalog._form')
         <div class="pt-2">

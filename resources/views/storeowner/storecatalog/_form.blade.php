@@ -107,7 +107,7 @@
                 <select name="recipe_store_product_id[]" class="md:col-span-6 border border-gray-300 rounded-md px-3 py-2">
                     <option value="">Select Store Product</option>
                     @foreach ($storeProducts as $storeProduct)
-                        <option value="{{ $storeProduct->productid }}" @selected((string) $row['store_product_id'] === (string) $storeProduct->productid)>
+                        <option value="{{ $storeProduct->productid }}" data-price="{{ $storeProduct->product_price }}" @selected((string) $row['store_product_id'] === (string) $storeProduct->productid)>
                             {{ $storeProduct->product_name }}
                         </option>
                     @endforeach
@@ -120,6 +120,15 @@
             </div>
         @endforeach
     </div>
+</div>
+
+<div class="mt-6">
+    <label class="block text-sm font-medium text-gray-700 mb-1">Product Photo</label>
+    <input type="file" name="catalog_product_photo" accept=".jpg,.jpeg,.png" class="w-full border border-gray-300 rounded-md px-3 py-2 bg-white">
+    <p class="mt-1 text-xs text-gray-500">Select .jpg, .jpeg or .png file (max 2MB).</p>
+    @if ($editing && !empty($catalogProduct->catalog_product_photo))
+        <p class="mt-1 text-xs text-gray-600">Current: {{ basename($catalogProduct->catalog_product_photo) }}</p>
+    @endif
 </div>
 
 <script>
@@ -139,8 +148,10 @@
         });
 
         form?.addEventListener('submit', (event) => {
-            const invalidGroup = !groupSelect || groupSelect.value === '' || ({{ $hasGroups ? 'false' : 'true' }} && groupSelect.value === '__add_group__');
-            const invalidCategory = !categorySelect || categorySelect.value === '' || ({{ $hasCategories ? 'false' : 'true' }} && categorySelect.value === '__add_category__');
+            const hasGroups = @json($hasGroups);
+            const hasCategories = @json($hasCategories);
+            const invalidGroup = !groupSelect || groupSelect.value === '' || (!hasGroups && groupSelect.value === '__add_group__');
+            const invalidCategory = !categorySelect || categorySelect.value === '' || (!hasCategories && categorySelect.value === '__add_category__');
             if (!invalidGroup && !invalidCategory) return;
 
             event.preventDefault();
@@ -151,7 +162,7 @@
         const rowsEl = document.getElementById('ingredientRows');
         if (!addBtn || !rowsEl) return;
 
-        const rowTemplate = `@php($options = '<option value="">Select Store Product</option>')@foreach ($storeProducts as $storeProduct)@php($options .= '<option value="' . e($storeProduct->productid) . '">' . e($storeProduct->product_name) . '</option>')@endforeach<div class="ingredient-row grid grid-cols-1 md:grid-cols-12 gap-2"><select name="recipe_store_product_id[]" class="md:col-span-6 border border-gray-300 rounded-md px-3 py-2">{!! $options !!}</select><input name="recipe_percentage[]" placeholder="%" class="md:col-span-2 border border-gray-300 rounded-md px-3 py-2"><input name="recipe_price[]" placeholder="Price" class="md:col-span-3 border border-gray-300 rounded-md px-3 py-2"><button type="button" class="removeIngredient md:col-span-1 px-2 py-2 bg-red-100 text-red-700 rounded">X</button></div>`;
+        const rowTemplate = `@php($options = '<option value="">Select Store Product</option>')@foreach ($storeProducts as $storeProduct)@php($options .= '<option value="' . e($storeProduct->productid) . '" data-price="' . e($storeProduct->product_price) . '">' . e($storeProduct->product_name) . '</option>')@endforeach<div class="ingredient-row grid grid-cols-1 md:grid-cols-12 gap-2"><select name="recipe_store_product_id[]" class="md:col-span-6 border border-gray-300 rounded-md px-3 py-2">{!! $options !!}</select><input name="recipe_percentage[]" placeholder="%" class="md:col-span-2 border border-gray-300 rounded-md px-3 py-2"><input name="recipe_price[]" placeholder="Price" class="md:col-span-3 border border-gray-300 rounded-md px-3 py-2"><button type="button" class="removeIngredient md:col-span-1 px-2 py-2 bg-red-100 text-red-700 rounded">X</button></div>`;
 
         const productPriceInput = document.getElementById('catalogProductPriceInput');
         const incomeSumInput = document.getElementById('incomeSumInput');
@@ -185,6 +196,22 @@
             profitPercentageInput.value = formatNumber(profitPercentage);
         };
 
+        const recalculateRowPriceFromPercentage = (rowEl) => {
+            if (!rowEl) return;
+            const select = rowEl.querySelector('select[name="recipe_store_product_id[]"]');
+            const pctInput = rowEl.querySelector('input[name="recipe_percentage[]"]');
+            const priceInput = rowEl.querySelector('input[name="recipe_price[]"]');
+            if (!select || !pctInput || !priceInput) return;
+
+            const opt = select.selectedOptions?.[0];
+            const basePrice = parseNumber(opt?.getAttribute('data-price') ?? '0');
+            const pct = parseNumber(pctInput.value);
+            if (!basePrice) return;
+
+            const computed = (basePrice * pct) / 100;
+            priceInput.value = formatNumber(computed);
+        };
+
         addBtn.addEventListener('click', () => {
             const currentRows = rowsEl.querySelectorAll('.ingredient-row').length;
             if (currentRows >= ingredientsLimit) {
@@ -208,6 +235,27 @@
             if (isRecipePriceField) {
                 recalculateIncomeAndProfit();
             }
+
+            const isPercentageField = event.target.matches('input[name="recipe_percentage[]"]');
+            if (isPercentageField) {
+                const row = event.target.closest('.ingredient-row');
+                recalculateRowPriceFromPercentage(row);
+                recalculateIncomeAndProfit();
+            }
+        });
+
+        rowsEl.addEventListener('change', (event) => {
+            const isStoreProductSelect = event.target.matches('select[name="recipe_store_product_id[]"]');
+            if (!isStoreProductSelect) return;
+            const row = event.target.closest('.ingredient-row');
+            if (!row) return;
+
+            const pctInput = row.querySelector('input[name="recipe_percentage[]"]');
+            if (pctInput && String(pctInput.value || '').trim() === '') {
+                pctInput.value = '100';
+            }
+            recalculateRowPriceFromPercentage(row);
+            recalculateIncomeAndProfit();
         });
 
         productPriceInput?.addEventListener('input', recalculateIncomeAndProfit);

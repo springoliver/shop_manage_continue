@@ -16,6 +16,7 @@ class CatalogProduct extends Model
         'catalog_product_name',
         'catalog_product_price',
         'catalog_product_desc',
+        'catalog_product_photo',
         'storeid',
         'catalog_product_groupid',
         'catalog_product_categoryid',

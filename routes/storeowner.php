@@ -366,6 +366,8 @@ Route::name('storeowner.')->group(function () {
         // Store Catalog settings/categories
         Route::get('storecatalog/settings', [StoreOwnerStoreCatalogController::class, 'settings'])->name('storecatalog.settings');
         Route::post('storecatalog/settings', [StoreOwnerStoreCatalogController::class, 'updateSettings'])->name('storecatalog.settings.update');
+        Route::post('storecatalog/groups', [StoreOwnerStoreCatalogController::class, 'updateGroup'])->name('storecatalog.groups.update');
+        Route::delete('storecatalog/groups/{catalog_product_groupid}', [StoreOwnerStoreCatalogController::class, 'deleteGroup'])->name('storecatalog.groups.delete');
         Route::get('storecatalog/categories', [StoreOwnerStoreCatalogController::class, 'categories'])->name('storecatalog.categories');
         Route::post('storecatalog/categories', [StoreOwnerStoreCatalogController::class, 'updateCategory'])->name('storecatalog.categories.update');
         Route::post('storecatalog/change_category_sell_status', [StoreOwnerStoreCatalogController::class, 'changeCategorySellStatus'])->name('storecatalog.categories.change-status');
